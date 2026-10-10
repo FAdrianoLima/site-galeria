@@ -45,23 +45,48 @@ if (hasSplit) {
   };
 } else {
   try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    } else {
+    const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (serviceAccountRaw) {
+      serviceAccount = JSON.parse(serviceAccountRaw);
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_B64) {
       const decoded = Buffer.from(
         process.env.FIREBASE_SERVICE_ACCOUNT_B64,
         "base64",
       ).toString("utf8");
 
       serviceAccount = JSON.parse(decoded);
+    } else {
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT ou FIREBASE_SERVICE_ACCOUNT_B64 não configurada.",
+      );
+    }
+
+    if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key
-        ?.replace(/\\n/g, "\n")
+        .replace(/\\n/g, "\n")
         .trim();
     }
-  } catch (err) {
-    console.error("Failed to parse Firebase service account:", err?.message);
 
-    throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT content.");
+    if (
+      !serviceAccount.project_id ||
+      !serviceAccount.client_email ||
+      !serviceAccount.private_key
+    ) {
+      throw new Error(
+        "Credencial incompleta: verifique project_id, client_email e private_key.",
+      );
+    }
+
+    console.log("Firebase service account carregada:", {
+      projectId: serviceAccount.project_id,
+      clientEmail: serviceAccount.client_email,
+      hasPrivateKey: Boolean(serviceAccount.private_key),
+    });
+  } catch (err) {
+    console.error("Erro ao carregar credencial Firebase:", err?.message);
+
+    throw new Error("Não foi possível carregar a credencial Firebase.");
   }
 }
 
