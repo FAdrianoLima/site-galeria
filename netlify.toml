@@ -8,3 +8,15 @@
   
 [build.environment]
   NPM_FLAGS = "--legacy-peer-deps"
+
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+  functions = "netlify/functions"
+
+[functions."processarNotificacoes"]
+  schedule = "*/5 * * * *"
+
+[functions."processarLembretes"]
+  schedule = "*/15 * * * *"
