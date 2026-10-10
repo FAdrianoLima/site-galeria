@@ -1,0 +1,54 @@
+.root {
+  width: 100%;
+  height:3.5rem;
+  background-color: #01030e;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  color: #ffffff;
+}
+
+.content {
+  width: 100%;
+  max-width: 80rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.content a {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+
+@media only screen and (min-width: 216px) and (max-width: 926px) {
+
+  .root {
+    height:100%;
+    flex-direction: row;
+  }
+
+
+  .content {
+    width: 100%;
+    max-width: 30rem;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .content a {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.content span {
+  font-size: 12px;
+}
+
+}

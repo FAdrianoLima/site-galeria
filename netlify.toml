@@ -1,0 +1,7 @@
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  included_files = ["netlify/functions/**"]
+  external_node_modules = ["firebase-admin", "basic-ftp"]
+[context.dev.environment]
+  VITE_USE_FIRESTORE_MOCK = "true"

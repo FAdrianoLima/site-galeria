@@ -1,0 +1,67 @@
+.col h5 {
+  color: var(--color-primary);
+  width: 100%;
+}
+
+.col h6 {
+  color: var(--color-primary);
+  width: 100%;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+}
+
+.col {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.h6-imagens {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.h6-imagens button {
+  max-width: 8rem;
+}
+
+.hr {
+  width: 100%;
+  padding-left: .5rem;
+  padding-right: .5rem;  
+}
+
+.hr hr {
+  border: .1rem solid var(--color-primary);
+}
+
+
+
+.table {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.table thead > tr > th {
+  text-align: start;
+}
+
+.table tbody > tr > td > img {
+  width: 4rem;
+}
