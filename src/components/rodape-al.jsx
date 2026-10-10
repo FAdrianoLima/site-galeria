@@ -2,28 +2,53 @@ import Link from "next/link";
 import styles from "../styles/RodapeAgencialAL.module.css";
 
 export default function RodapeAgencialAL() {
+  const ano = new Date().getFullYear();
+
   return (
-    <div className={styles.root}>
+    <footer className={styles.root}>
       <div className={styles.content}>
-        <span style={{ display: "flex", flexDirection: "row" }}>
-          Direitos Reservados 2022 |&nbsp;
-          <Link href="/docs/politica privacidade.pdf" target="_blank" passHref>
-            Políticas de Privacidade
-          </Link>
-          &nbsp;| &nbsp;
-          <Link href="/docs/termo uso.pdf" target="_blank" passHref>
-            Termos de Uso
-          </Link>
-          &nbsp; |&nbsp;
-          <Link href="/docs/politica-de-cookies.pdf" target="_blank" passHref>
-            Política de Cookies
-          </Link>
-          &nbsp;|&nbsp;Desenvolvido por
-        </span>
-        <Link href="https://agenciaal.com.br/" target="_blank" passHref>
-          <img src="/agenciaal.png" alt="NewFly" />
+        <div className={styles.info}>
+          <span>© {ano} Agência AL. Todos os direitos reservados.</span>
+
+          <nav className={styles.links} aria-label="Links legais">
+            <Link
+              href="/docs/politica%20privacidade.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Política de Privacidade
+            </Link>
+
+            <Link
+              href="/docs/termo%20uso.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Termos de Uso
+            </Link>
+
+            <Link
+              href="/docs/politica-de-cookies.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Política de Cookies
+            </Link>
+          </nav>
+
+          <span className={styles.credito}>Desenvolvido por</span>
+        </div>
+
+        <Link
+          href="https://agenciaal.com.br/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.logoLink}
+          aria-label="Visite o site da Agência AL"
+        >
+          <img src="/agenciaal.png" alt="Agência AL" />
         </Link>
       </div>
-    </div>
+    </footer>
   );
 }

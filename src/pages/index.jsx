@@ -12,10 +12,8 @@ export default function Home() {
 
   return (
     <>
-      <Menu />
       <div id="banner" />
       <Banner />
-      <Rodape />
       <Whats />
       <RodapeAl />
     </>
