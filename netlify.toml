@@ -9,7 +9,6 @@
 [build.environment]
   NPM_FLAGS = "--legacy-peer-deps"
 
-
 [build]
   command = "npm run build"
   publish = ".next"
@@ -20,3 +19,6 @@
 
 [functions."processarLembretes"]
   schedule = "*/15 * * * *"
+
+[functions."gerarAutomacoesWhatsApp"]
+schedule = "*/15 * * * *"

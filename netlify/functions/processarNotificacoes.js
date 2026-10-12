@@ -2,6 +2,7 @@ const admin = require("./firebaseAdmin");
 const { normalizarTelefone, enviarTextoWhatsApp } = require("./_whatsapp");
 
 const db = admin.firestore();
+
 const LIMITE = 50;
 const MAX_TENTATIVAS = 5;
 const TEMPO_TRAVA_MS = 15 * 60 * 1000;
@@ -19,20 +20,18 @@ function formatarData(data) {
   return `${dia}/${mes}/${ano}`;
 }
 
-function criarMensagem(tipo, agendamento) {
-  const data = formatarData(agendamento.data);
-  const horario = agendamento.horario || "";
-  const servico = agendamento.servicoNome || "seu atendimento";
-  const nome = agendamento.clienteNome || "Olá";
+function criarMensagem(tipo, dados) {
+  const nome = dados.clienteNome || "Olá";
+  const data = formatarData(dados.data);
+  const horario = dados.horario || "";
+  const servico = dados.servicoNome || "seu atendimento";
 
   switch (tipo) {
     case "novo_agendamento":
       return (
         `Olá, ${nome}! 💗\n\n` +
         `Seu atendimento na Galeria da Beleza foi agendado.\n\n` +
-        `Serviço: ${servico}\n` +
-        `Data: ${data}\n` +
-        `Horário: ${horario}\n\n` +
+        `Serviço: ${servico}\nData: ${data}\nHorário: ${horario}\n\n` +
         `Se precisar de alguma alteração, entre em contato conosco.`
       );
 
@@ -40,9 +39,7 @@ function criarMensagem(tipo, agendamento) {
       return (
         `Olá, ${nome}! 💗\n\n` +
         `Seu atendimento na Galeria da Beleza está confirmado!\n\n` +
-        `Serviço: ${servico}\n` +
-        `Data: ${data}\n` +
-        `Horário: ${horario}\n\n` +
+        `Serviço: ${servico}\nData: ${data}\nHorário: ${horario}\n\n` +
         `Aguardamos você!`
       );
 
@@ -50,9 +47,7 @@ function criarMensagem(tipo, agendamento) {
       return (
         `Olá, ${nome}! 💗\n\n` +
         `Houve uma atualização no seu atendimento na Galeria da Beleza.\n\n` +
-        `Serviço: ${servico}\n` +
-        `Data: ${data}\n` +
-        `Horário: ${horario}\n\n` +
+        `Serviço: ${servico}\nData: ${data}\nHorário: ${horario}\n\n` +
         `Em caso de dúvidas, entre em contato conosco.`
       );
 
@@ -68,10 +63,27 @@ function criarMensagem(tipo, agendamento) {
       return (
         `Olá, ${nome}! 💗\n\n` +
         `Este é um lembrete do seu atendimento na Galeria da Beleza.\n\n` +
-        `Serviço: ${servico}\n` +
-        `Data: ${data}\n` +
-        `Horário: ${horario}\n\n` +
+        `Serviço: ${servico}\nData: ${data}\nHorário: ${horario}\n\n` +
         `Esperamos você!`
+      );
+
+    case "feedback":
+      return (
+        `Olá, ${nome}! 💗\n\n` +
+        `Já faz um tempinho desde seu atendimento na Galeria da Beleza, ` +
+        `e gostaríamos de saber como foi sua experiência.\n\n` +
+        `Você poderia nos contar o que achou do procedimento e do atendimento? ` +
+        `Sua opinião é muito importante para nós e nos ajuda a melhorar cada vez mais. ✨\n\n` +
+        `Agradecemos pela confiança!`
+      );
+
+    case "aniversario":
+      return (
+        `Feliz aniversário, ${nome}! 🎂💗\n\n` +
+        `Toda a equipe da Galeria da Beleza deseja a você um novo ciclo ` +
+        `repleto de saúde, alegria e momentos especiais.\n\n` +
+        `Que tal aproveitar seu dia para reservar um momento só para você? ✨\n\n` +
+        `Será um prazer receber você novamente!`
       );
 
     default:
@@ -82,13 +94,8 @@ function criarMensagem(tipo, agendamento) {
 function notificacaoAindaValida(tipo, agendamento) {
   const status = String(agendamento.status || "").toLowerCase();
 
-  if (tipo === "cancelamento") {
-    return status === "cancelado";
-  }
-
-  if (tipo === "confirmacao") {
-    return status === "confirmado";
-  }
+  if (tipo === "cancelamento") return status === "cancelado";
+  if (tipo === "confirmacao") return status === "confirmado";
 
   if (tipo === "novo_agendamento" || tipo === "alteracao") {
     return ["agendado", "confirmado"].includes(status);
@@ -98,12 +105,25 @@ function notificacaoAindaValida(tipo, agendamento) {
     return ["agendado", "confirmado"].includes(status);
   }
 
+  if (tipo === "feedback") {
+    return status === "concluido";
+  }
+
   return false;
 }
 
 function erroPodeSerReprocessado(notificacao) {
-  const tentativas = Number(notificacao.tentativas || 0);
-  return tentativas < MAX_TENTATIVAS;
+  return Number(notificacao.tentativas || 0) < MAX_TENTATIVAS;
+}
+
+async function obterCliente(clienteId) {
+  if (!clienteId) throw new Error("Notificação sem clienteId.");
+
+  const snap = await db.collection("clientes").doc(String(clienteId)).get();
+
+  if (!snap.exists) throw new Error("Cliente não encontrado.");
+
+  return snap.data();
 }
 
 async function processarUmaNotificacao(referencia, agora) {
@@ -113,16 +133,17 @@ async function processarUmaNotificacao(referencia, agora) {
   if (!snap.exists) return "ignorada";
 
   const notificacao = snap.data();
+  const tipo = notificacao.tipo;
 
   if (notificacao.status === "enviada" || notificacao.status === "ignorada") {
     return "ignorada";
   }
 
+  const processandoEm = notificacao.processandoEm?.toDate?.();
   const emProcessamento =
     notificacao.status === "processando" &&
-    notificacao.processandoEm &&
-    agora.getTime() - notificacao.processandoEm.toDate().getTime() <
-      TEMPO_TRAVA_MS;
+    processandoEm &&
+    agora.getTime() - processandoEm.getTime() < TEMPO_TRAVA_MS;
 
   if (emProcessamento) return "ignorada";
 
@@ -130,7 +151,6 @@ async function processarUmaNotificacao(referencia, agora) {
     return "ignorada";
   }
 
-  // A trava reduz a chance de dois processadores enviarem a mesma mensagem.
   await referencia.update({
     status: "processando",
     processandoEm: dbAgora,
@@ -138,40 +158,64 @@ async function processarUmaNotificacao(referencia, agora) {
   });
 
   try {
-    const agendamentoId = notificacao.agendamentoId;
-    const agendamentoRef = db.collection("agendamentos").doc(agendamentoId);
-    const agendamentoSnap = await agendamentoRef.get();
+    let cliente;
+    let dadosMensagem;
 
-    if (!agendamentoSnap.exists) {
-      await referencia.update({
-        status: "ignorada",
-        motivo: "Agendamento não encontrado.",
-        atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      return "ignorada";
+    if (tipo === "aniversario") {
+      cliente = await obterCliente(notificacao.clienteId);
+
+      dadosMensagem = {
+        clienteNome:
+          cliente.nome || cliente.nomeFantasia || cliente.razaoSocial || "Olá",
+      };
+    } else {
+      if (!notificacao.agendamentoId) {
+        throw new Error("Notificação sem agendamentoId.");
+      }
+
+      const agendamentoRef = db
+        .collection("agendamentos")
+        .doc(String(notificacao.agendamentoId));
+
+      const agendamentoSnap = await agendamentoRef.get();
+
+      if (!agendamentoSnap.exists) {
+        await referencia.update({
+          status: "ignorada",
+          motivo: "Agendamento não encontrado.",
+          atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return "ignorada";
+      }
+
+      const agendamento = agendamentoSnap.data();
+
+      if (!notificacaoAindaValida(tipo, agendamento)) {
+        await referencia.update({
+          status: "ignorada",
+          motivo:
+            "O estado atual do agendamento não corresponde à notificação.",
+          atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return "ignorada";
+      }
+
+      cliente = await obterCliente(
+        notificacao.clienteId || agendamento.clienteId,
+      );
+
+      dadosMensagem = {
+        ...agendamento,
+        clienteNome:
+          cliente.nome ||
+          cliente.nomeFantasia ||
+          cliente.razaoSocial ||
+          agendamento.clienteNome ||
+          "Olá",
+      };
     }
-
-    const agendamento = agendamentoSnap.data();
-
-    if (!notificacaoAindaValida(notificacao.tipo, agendamento)) {
-      await referencia.update({
-        status: "ignorada",
-        motivo: "O estado atual do agendamento não corresponde à notificação.",
-        atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      return "ignorada";
-    }
-
-    const clienteSnap = await db
-      .collection("clientes")
-      .doc(agendamento.clienteId)
-      .get();
-
-    if (!clienteSnap.exists) {
-      throw new Error("Cliente não encontrado.");
-    }
-
-    const cliente = clienteSnap.data();
 
     const telefone = normalizarTelefone(
       cliente.whatsapp || cliente.telefone || cliente.celular,
@@ -182,17 +226,7 @@ async function processarUmaNotificacao(referencia, agora) {
       throw new Error("Cliente sem telefone válido para WhatsApp.");
     }
 
-    const dadosMensagem = {
-      ...agendamento,
-      clienteNome:
-        cliente.nome ||
-        cliente.nomeFantasia ||
-        agendamento.clienteNome ||
-        "Olá",
-    };
-
-    const mensagem = criarMensagem(notificacao.tipo, dadosMensagem);
-
+    const mensagem = criarMensagem(tipo, dadosMensagem);
     const resposta = await enviarTextoWhatsApp(telefone, mensagem);
 
     await referencia.update({
@@ -203,6 +237,12 @@ async function processarUmaNotificacao(referencia, agora) {
       enviadaEm: admin.firestore.FieldValue.serverTimestamp(),
       atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
       erro: admin.firestore.FieldValue.delete(),
+    });
+
+    console.log("Notificação enviada:", {
+      notificacaoId: referencia.id,
+      tipo,
+      telefoneFinal: telefone.slice(-4),
     });
 
     return "enviada";
@@ -220,6 +260,7 @@ async function processarUmaNotificacao(referencia, agora) {
 
     console.error("Falha ao processar notificação:", {
       notificacaoId: referencia.id,
+      tipo,
       tentativas,
       erro: error.message,
     });
@@ -247,11 +288,12 @@ exports.handler = async () => {
       const status = await processarUmaNotificacao(item.ref, new Date());
 
       resultado.processadas++;
-
       if (status === "enviada") resultado.enviadas++;
       else if (status === "erro") resultado.erros++;
       else resultado.ignoradas++;
     }
+
+    console.log("Resumo do processador de notificações:", resultado);
 
     return {
       statusCode: 200,
