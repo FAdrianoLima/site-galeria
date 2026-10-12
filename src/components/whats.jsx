@@ -5,7 +5,7 @@ function Whats() {
   return (
     <div className={styles.background}>
       <Link
-        href="https://api.whatsapp.com/send?phone="
+        href="https://api.whatsapp.com/send?phone=5554996350232&text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida."
         target="_blank"
         passHref
       >
