@@ -1,4 +1,4 @@
-const { admin } = require("./firebaseAdmin");
+const admin = require("./firebaseAdmin");
 const { obterConfiguracaoNfse } = require("./_nfseConfig");
 
 exports.handler = async (event) => {
