@@ -71,13 +71,13 @@ exports.handler = async (event) => {
       }),
     };
   } catch (erro) {
-    console.error("Erro no diagnóstico NFS-e:", erro.message);
+    console.error("Erro no diagnóstico NFS-e:", erro);
 
     return {
-      statusCode: 401,
+      statusCode: 500,
       headers,
       body: JSON.stringify({
-        erro: "Não foi possível autenticar ou consultar a configuração.",
+        erro: "Falha interna ao consultar a configuração fiscal.",
       }),
     };
   }
