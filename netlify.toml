@@ -1,0 +1,24 @@
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  included_files = ["netlify/functions/**"]
+  external_node_modules = ["firebase-admin", "basic-ftp"]
+[context.dev.environment]
+  VITE_USE_FIRESTORE_MOCK = "true"
+  
+[build.environment]
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+  functions = "netlify/functions"
+
+[functions."processarNotificacoes"]
+  schedule = "*/5 * * * *"
+
+[functions."processarLembretes"]
+  schedule = "*/15 * * * *"
+
+[functions."gerarAutomacoesWhatsApp"]
+schedule = "*/15 * * * *"
