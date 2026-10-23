@@ -84,6 +84,40 @@ function obterNomeCliente(cliente) {
   );
 }
 
+function montarTomadorNfse(cliente) {
+  const documento = String(
+    cliente.cpfCnpj || cliente.cpf || cliente.cnpj || "",
+  ).replace(/\D/g, "");
+
+  const tomador = {
+    nome: obterNomeCliente(cliente),
+    email: cliente.email || "",
+    telefone: String(cliente.telefone || cliente.whatsapp || "").replace(
+      /\D/g,
+      "",
+    ),
+    endereco: {
+      logradouro: cliente.endereco || "",
+      numero: String(cliente.numero || ""),
+      complemento: cliente.complemento || "",
+      bairro: cliente.bairro || "",
+      cidade: cliente.cidade || "",
+      uf: cliente.estado || "",
+      cep: String(cliente.cep || "").replace(/\D/g, ""),
+    },
+  };
+
+  if (documento.length === 11) {
+    tomador.cpf = documento;
+  } else if (documento.length === 14) {
+    tomador.cnpj = documento;
+  } else {
+    throw new Error("O cliente precisa ter um CPF ou CNPJ válido.");
+  }
+
+  return tomador;
+}
+
 export default function NotasFiscais() {
   const [notas, setNotas] = React.useState([]);
   const [clientes, setClientes] = React.useState([]);

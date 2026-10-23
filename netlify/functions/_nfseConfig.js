@@ -9,9 +9,9 @@ function obterConfiguracaoNfse() {
     ambiente,
     cnpjPrestador: (process.env.NFSE_CNPJ_PRESTADOR || "").replace(/\D/g, ""),
     razaoSocial:
-      process.env.NFSE_RAZAO_SOCIAL || "EVELIZE TEREZINHA DE CAMPOS DE LIMA",
+      process.env.NFSE_RAZAO_SOCIAL || "Quelli Bosqueiro Clinica Estetica LTDA",
     municipio: process.env.NFSE_MUNICIPIO || "Caxias do Sul - RS",
-    regime: process.env.NFSE_REGIME || "MEI",
+    regime: process.env.NFSE_REGIME || "Simples Nacional",
     emissaoHabilitada: process.env.NFSE_EMISSAO_HABILITADA === "true",
   };
 }
