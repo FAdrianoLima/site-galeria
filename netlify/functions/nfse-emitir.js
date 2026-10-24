@@ -177,19 +177,32 @@ exports.handler = async (event) => {
 
     // Encaminhar somente os campos de nível superior previstos.
     // Os campos internos devem seguir o esquema confirmado da Notaas.
+
+    const aliquotaConfigurada = process.env.NFSE_ALIQUOTA_ISS;
+
+    if (
+      aliquotaConfigurada === undefined ||
+      aliquotaConfigurada.trim() === "" ||
+      !Number.isFinite(Number(aliquotaConfigurada)) ||
+      Number(aliquotaConfigurada) < 0 ||
+      Number(aliquotaConfigurada) > 100
+    ) {
+      return resposta(500, {
+        erro: "Alíquota de ISS não configurada corretamente no servidor.",
+      });
+    }
+
     const payload = {
       tomador,
       servico,
-      valores,
+      valores: {
+        ...valores,
+        aliquotaIss: Number(aliquotaConfigurada),
+      },
     };
 
-    if (competencia) {
-      payload.competencia = competencia;
-    }
-
-    if (referencia) {
-      payload.referencia = referencia;
-    }
+    if (competencia) payload.competencia = competencia;
+    if (referencia) payload.referencia = referencia;
 
     // 7. Solicitar emissão à Notaas
     const baseUrl = (

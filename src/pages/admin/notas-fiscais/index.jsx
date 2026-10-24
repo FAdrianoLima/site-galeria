@@ -585,20 +585,15 @@ export default function NotasFiscais() {
 
       const payload = {
         tomador: montarTomadorNfse(cliente),
-
         servico: {
+          codigo: "060201",
           descricao: nota.descricao.trim(),
         },
-
         valores: {
           total: valor,
           issRetido: false,
         },
-
-        // A API espera YYYY-MM, não YYYY-MM-DD.
         competencia: String(nota.dataCompetencia).slice(0, 7),
-
-        // Identificador para conciliar a resposta com o rascunho.
         referencia: `NFSE-${nota.id}`,
       };
 
