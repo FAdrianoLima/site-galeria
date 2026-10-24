@@ -119,123 +119,6 @@ function montarTomadorNfse(cliente) {
   return tomador;
 }
 
-async function consultarStatusNfse(nota) {
-  if (consultandoNfse) return;
-
-  const invoiceId = nota?.nfse?.invoiceId;
-
-  if (!nota?.id || !invoiceId) {
-    window.alert("Esta nota ainda não possui um protocolo de emissão.");
-    return;
-  }
-
-  const usuario = auth.currentUser;
-
-  if (!usuario) {
-    window.alert("Sua sessão expirou. Entre novamente.");
-    return;
-  }
-
-  setConsultandoNfse(true);
-
-  try {
-    const token = await usuario.getIdToken();
-
-    const resposta = await fetch(
-      `/.netlify/functions/nfse-consultar?invoiceId=${encodeURIComponent(invoiceId)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    const resultado = await resposta.json().catch(() => ({}));
-
-    if (!resposta.ok) {
-      throw new Error(
-        resultado.erro || "Não foi possível consultar o status da nota.",
-      );
-    }
-
-    const status = String(resultado.status || "desconhecido").toLowerCase();
-
-    const atualizacao = {
-      "nfse.status": status,
-      "nfse.consultadoEm": new Date().toISOString(),
-      atualizadoEm: serverTimestamp(),
-    };
-
-    if (resultado.numeroNfe) {
-      atualizacao["nfse.numeroNfe"] = resultado.numeroNfe;
-    }
-
-    if (resultado.chNFSe) {
-      atualizacao["nfse.chNFSe"] = resultado.chNFSe;
-    }
-
-    if (resultado.emittedAt) {
-      atualizacao["nfse.emittedAt"] = resultado.emittedAt;
-    }
-
-    if (resultado.ambiente) {
-      atualizacao["nfse.ambiente"] = resultado.ambiente;
-    }
-
-    if (resultado.pdfUrl) {
-      atualizacao["nfse.pdfUrl"] = resultado.pdfUrl;
-    }
-
-    if (resultado.xmlUrl) {
-      atualizacao["nfse.xmlUrl"] = resultado.xmlUrl;
-    }
-
-    if (resultado.errorCode) {
-      atualizacao["nfse.errorCode"] = resultado.errorCode;
-    }
-
-    if (resultado.errorMessage) {
-      atualizacao["nfse.errorMessage"] = resultado.errorMessage;
-    }
-
-    if (resultado.errors) {
-      atualizacao["nfse.errors"] = resultado.errors;
-    }
-
-    // O status principal só muda para emitida se a API confirmar.
-    if (status === "issued") {
-      atualizacao.status = "emitida";
-      atualizacao.numeroNfe = resultado.numeroNfe || null;
-      atualizacao.chaveVerificacao = resultado.chNFSe || null;
-      atualizacao.dataEmissao = resultado.emittedAt || null;
-    } else if (status === "error") {
-      atualizacao.status = "erro";
-    } else if (status === "cancelled") {
-      atualizacao.status = "cancelada";
-    } else {
-      atualizacao.status = "emissao_solicitada";
-    }
-
-    await updateDoc(doc(db, "notasFiscais", nota.id), atualizacao);
-
-    await carregarDados();
-
-    window.alert(
-      `Status da NFS-e: ${status}` +
-        (resultado.numeroNfe ? `\nNúmero: ${resultado.numeroNfe}` : "") +
-        (resultado.errorMessage ? `\nRetorno: ${resultado.errorMessage}` : ""),
-    );
-  } catch (erro) {
-    console.error("Erro ao consultar NFS-e:", erro);
-
-    window.alert(erro.message || "Falha ao consultar o status da nota.");
-  } finally {
-    setConsultandoNfse(false);
-  }
-}
-
 export default function NotasFiscais() {
   const [notas, setNotas] = React.useState([]);
   const [clientes, setClientes] = React.useState([]);
@@ -302,6 +185,125 @@ export default function NotasFiscais() {
       setCarregando(false);
     }
   }, []);
+
+  async function consultarStatusNfse(nota) {
+    if (consultandoNfse) return;
+
+    const invoiceId = nota?.nfse?.invoiceId;
+
+    if (!nota?.id || !invoiceId) {
+      window.alert("Esta nota ainda não possui um protocolo de emissão.");
+      return;
+    }
+
+    const usuario = auth.currentUser;
+
+    if (!usuario) {
+      window.alert("Sua sessão expirou. Entre novamente.");
+      return;
+    }
+
+    setConsultandoNfse(true);
+
+    try {
+      const token = await usuario.getIdToken();
+
+      const resposta = await fetch(
+        `/.netlify/functions/nfse-consultar?invoiceId=${encodeURIComponent(invoiceId)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        },
+      );
+
+      const resultado = await resposta.json().catch(() => ({}));
+
+      if (!resposta.ok) {
+        throw new Error(
+          resultado.erro || "Não foi possível consultar o status da nota.",
+        );
+      }
+
+      const status = String(resultado.status || "desconhecido").toLowerCase();
+
+      const atualizacao = {
+        "nfse.status": status,
+        "nfse.consultadoEm": new Date().toISOString(),
+        atualizadoEm: serverTimestamp(),
+      };
+
+      if (resultado.numeroNfe) {
+        atualizacao["nfse.numeroNfe"] = resultado.numeroNfe;
+      }
+
+      if (resultado.chNFSe) {
+        atualizacao["nfse.chNFSe"] = resultado.chNFSe;
+      }
+
+      if (resultado.emittedAt) {
+        atualizacao["nfse.emittedAt"] = resultado.emittedAt;
+      }
+
+      if (resultado.ambiente) {
+        atualizacao["nfse.ambiente"] = resultado.ambiente;
+      }
+
+      if (resultado.pdfUrl) {
+        atualizacao["nfse.pdfUrl"] = resultado.pdfUrl;
+      }
+
+      if (resultado.xmlUrl) {
+        atualizacao["nfse.xmlUrl"] = resultado.xmlUrl;
+      }
+
+      if (resultado.errorCode) {
+        atualizacao["nfse.errorCode"] = resultado.errorCode;
+      }
+
+      if (resultado.errorMessage) {
+        atualizacao["nfse.errorMessage"] = resultado.errorMessage;
+      }
+
+      if (resultado.errors) {
+        atualizacao["nfse.errors"] = resultado.errors;
+      }
+
+      // O status principal só muda para emitida se a API confirmar.
+      if (status === "issued") {
+        atualizacao.status = "emitida";
+        atualizacao.numeroNfe = resultado.numeroNfe || null;
+        atualizacao.chaveVerificacao = resultado.chNFSe || null;
+        atualizacao.dataEmissao = resultado.emittedAt || null;
+      } else if (status === "error") {
+        atualizacao.status = "erro";
+      } else if (status === "cancelled") {
+        atualizacao.status = "cancelada";
+      } else if (["queued", "processing"].includes(status)) {
+        atualizacao.status = "emissao_solicitada";
+      }
+
+      await updateDoc(doc(db, "notasFiscais", nota.id), atualizacao);
+
+      await carregarDados();
+
+      window.alert(
+        `Status da NFS-e: ${status}` +
+          (resultado.numeroNfe ? `\nNúmero: ${resultado.numeroNfe}` : "") +
+          (resultado.errorMessage
+            ? `\nRetorno: ${resultado.errorMessage}`
+            : ""),
+      );
+    } catch (erro) {
+      console.error("Erro ao consultar NFS-e:", erro);
+
+      window.alert(erro.message || "Falha ao consultar o status da nota.");
+    } finally {
+      setConsultandoNfse(false);
+    }
+  }
 
   const consultarDiagnosticoNfse = React.useCallback(async (usuario) => {
     setDiagnosticoNfse({
@@ -623,7 +625,10 @@ export default function NotasFiscais() {
 
       if (!invoiceId) {
         throw new Error(
-          "A resposta não contém invoiceId. Verifique o retorno da Notaas antes de tentar novamente.",
+          resultado.erro ||
+            resultado.error ||
+            resultado.message ||
+            `Não foi possível solicitar a emissão (HTTP ${resposta.status}).`,
         );
       }
 
@@ -767,26 +772,12 @@ export default function NotasFiscais() {
           >
             Novo rascunho
           </Button>
-
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={
-              emitindoNfse ||
-              !notaSelecionada ||
-              notaSelecionada.status !== "rascunho"
-            }
-            onClick={() => solicitarEmissaoHomologacao(notaSelecionada)}
-          >
-            {emitindoNfse
-              ? "Solicitando..."
-              : "Solicitar emissão em homologação"}
-          </Button>
         </Stack>
 
         <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-          Esta área registra apenas rascunhos internos. Nenhuma nota fiscal é
-          emitida ou autorizada pelo sistema nesta etapa.
+          Os registros são armazenados como rascunhos. A solicitação de emissão
+          em homologação será usada para testar a integração fiscal, sem
+          representar uma nota autorizada para uso fiscal em produção.
         </Alert>
 
         <Card sx={{ ...cardSx, mb: 3 }}>
@@ -1040,7 +1031,73 @@ export default function NotasFiscais() {
                       <TableCell>Competência</TableCell>
                       <TableCell>Valor</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell align="right">Ações</TableCell>
+
+                      <TableCell align="right">
+                        <Stack
+                          direction="row"
+                          justifyContent="flex-end"
+                          alignItems="center"
+                          spacing={0.5}
+                          sx={{ flexWrap: "wrap" }}
+                        >
+                          <IconButton
+                            size="small"
+                            aria-label="Visualizar rascunho"
+                            title="Visualizar dados"
+                            onClick={() => abrirDetalhes(nota)}
+                          >
+                            <VisibilityOutlinedIcon fontSize="small" />
+                          </IconButton>
+
+                          {nota.status === "rascunho" && (
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              disabled={
+                                emitindoNfse ||
+                                !notaSelecionada ||
+                                notaSelecionada.status !== "rascunho"
+                              }
+                              onClick={() =>
+                                solicitarEmissaoHomologacao(notaSelecionada)
+                              }
+                            >
+                              {emitindoNfse
+                                ? "Solicitando..."
+                                : "Solicitar emissão em homologação"}
+                            </Button>
+                          )}
+
+                          {nota.nfse?.invoiceId && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              disabled={consultandoNfse}
+                              onClick={() => consultarStatusNfse(nota)}
+                              sx={{
+                                textTransform: "none",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {consultandoNfse
+                                ? "Consultando..."
+                                : "Consultar status"}
+                            </Button>
+                          )}
+
+                          {nota.status === "rascunho" && (
+                            <IconButton
+                              size="small"
+                              aria-label="Excluir rascunho"
+                              title="Excluir rascunho"
+                              color="error"
+                              onClick={() => excluirRascunho(nota)}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Stack>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
 
@@ -1093,14 +1150,24 @@ export default function NotasFiscais() {
                                 ? "Emitida"
                                 : nota.status === "cancelada"
                                   ? "Cancelada"
-                                  : "Rascunho"
+                                  : nota.status === "erro"
+                                    ? "Erro na emissão"
+                                    : nota.status === "emissao_solicitada"
+                                      ? "Em processamento"
+                                      : nota.status === "rascunho"
+                                        ? "Rascunho"
+                                        : nota.status || "Desconhecido"
                             }
                             color={
                               nota.status === "emitida"
                                 ? "success"
-                                : nota.status === "cancelada"
-                                  ? "default"
-                                  : "warning"
+                                : nota.status === "erro"
+                                  ? "error"
+                                  : nota.status === "cancelada"
+                                    ? "default"
+                                    : nota.status === "emissao_solicitada"
+                                      ? "info"
+                                      : "warning"
                             }
                             variant="outlined"
                           />

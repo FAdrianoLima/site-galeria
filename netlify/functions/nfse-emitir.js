@@ -237,20 +237,36 @@ exports.handler = async (event) => {
     }
 
     // Não declarar sucesso se não houver identificador para consulta.
-    if (
-      !objetoValido(resultadoNotaas) ||
-      typeof resultadoNotaas.invoiceId !== "string" ||
-      !resultadoNotaas.invoiceId.trim()
-    ) {
-      console.error(
-        "Resposta de sucesso da Notaas sem invoiceId válido:",
-        resultadoNotaas,
-      );
+    const dadosResposta =
+      resultadoNotaas?.data && typeof resultadoNotaas.data === "object"
+        ? resultadoNotaas.data
+        : resultadoNotaas;
+
+    const invoiceId =
+      typeof dadosResposta?.invoiceId === "string"
+        ? dadosResposta.invoiceId.trim()
+        : "";
+
+    if (!invoiceId) {
+      console.error("Resposta da Notaas sem invoiceId válido:", {
+        status: respostaNotaas.status,
+        campos: Object.keys(dadosResposta || {}),
+      });
 
       return resposta(502, {
-        erro: "A Notaas respondeu sem um identificador de emissão válido. Verifique a resposta antes de tentar novamente.",
+        erro: "A Notaas não retornou um identificador válido. Consulte o painel da Notaas antes de repetir a solicitação.",
       });
     }
+
+    return resposta(202, {
+      sucesso: true,
+      mensagem: "Solicitação encaminhada à Notaas.",
+      invoiceId,
+      status: dadosResposta.status || "queued",
+      referencia: dadosResposta.referencia || referencia || null,
+      pollUrl: dadosResposta.pollUrl || null,
+      ambiente: config.ambiente,
+    });
 
     // 8. Retornar o identificador para acompanhamento
     return resposta(202, {
