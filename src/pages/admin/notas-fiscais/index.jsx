@@ -8,6 +8,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { auth } from "../../../../firebase-config";
@@ -118,6 +119,123 @@ function montarTomadorNfse(cliente) {
   return tomador;
 }
 
+async function consultarStatusNfse(nota) {
+  if (consultandoNfse) return;
+
+  const invoiceId = nota?.nfse?.invoiceId;
+
+  if (!nota?.id || !invoiceId) {
+    window.alert("Esta nota ainda não possui um protocolo de emissão.");
+    return;
+  }
+
+  const usuario = auth.currentUser;
+
+  if (!usuario) {
+    window.alert("Sua sessão expirou. Entre novamente.");
+    return;
+  }
+
+  setConsultandoNfse(true);
+
+  try {
+    const token = await usuario.getIdToken();
+
+    const resposta = await fetch(
+      `/.netlify/functions/nfse-consultar?invoiceId=${encodeURIComponent(invoiceId)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      },
+    );
+
+    const resultado = await resposta.json().catch(() => ({}));
+
+    if (!resposta.ok) {
+      throw new Error(
+        resultado.erro || "Não foi possível consultar o status da nota.",
+      );
+    }
+
+    const status = String(resultado.status || "desconhecido").toLowerCase();
+
+    const atualizacao = {
+      "nfse.status": status,
+      "nfse.consultadoEm": new Date().toISOString(),
+      atualizadoEm: serverTimestamp(),
+    };
+
+    if (resultado.numeroNfe) {
+      atualizacao["nfse.numeroNfe"] = resultado.numeroNfe;
+    }
+
+    if (resultado.chNFSe) {
+      atualizacao["nfse.chNFSe"] = resultado.chNFSe;
+    }
+
+    if (resultado.emittedAt) {
+      atualizacao["nfse.emittedAt"] = resultado.emittedAt;
+    }
+
+    if (resultado.ambiente) {
+      atualizacao["nfse.ambiente"] = resultado.ambiente;
+    }
+
+    if (resultado.pdfUrl) {
+      atualizacao["nfse.pdfUrl"] = resultado.pdfUrl;
+    }
+
+    if (resultado.xmlUrl) {
+      atualizacao["nfse.xmlUrl"] = resultado.xmlUrl;
+    }
+
+    if (resultado.errorCode) {
+      atualizacao["nfse.errorCode"] = resultado.errorCode;
+    }
+
+    if (resultado.errorMessage) {
+      atualizacao["nfse.errorMessage"] = resultado.errorMessage;
+    }
+
+    if (resultado.errors) {
+      atualizacao["nfse.errors"] = resultado.errors;
+    }
+
+    // O status principal só muda para emitida se a API confirmar.
+    if (status === "issued") {
+      atualizacao.status = "emitida";
+      atualizacao.numeroNfe = resultado.numeroNfe || null;
+      atualizacao.chaveVerificacao = resultado.chNFSe || null;
+      atualizacao.dataEmissao = resultado.emittedAt || null;
+    } else if (status === "error") {
+      atualizacao.status = "erro";
+    } else if (status === "cancelled") {
+      atualizacao.status = "cancelada";
+    } else {
+      atualizacao.status = "emissao_solicitada";
+    }
+
+    await updateDoc(doc(db, "notasFiscais", nota.id), atualizacao);
+
+    await carregarDados();
+
+    window.alert(
+      `Status da NFS-e: ${status}` +
+        (resultado.numeroNfe ? `\nNúmero: ${resultado.numeroNfe}` : "") +
+        (resultado.errorMessage ? `\nRetorno: ${resultado.errorMessage}` : ""),
+    );
+  } catch (erro) {
+    console.error("Erro ao consultar NFS-e:", erro);
+
+    window.alert(erro.message || "Falha ao consultar o status da nota.");
+  } finally {
+    setConsultandoNfse(false);
+  }
+}
+
 export default function NotasFiscais() {
   const [notas, setNotas] = React.useState([]);
   const [clientes, setClientes] = React.useState([]);
@@ -132,6 +250,9 @@ export default function NotasFiscais() {
     texto: "",
     tipo: "success",
   });
+
+  const [emitindoNfse, setEmitindoNfse] = React.useState(false);
+  const [consultandoNfse, setConsultandoNfse] = React.useState(false);
 
   const [diagnosticoNfse, setDiagnosticoNfse] = React.useState({
     carregando: true,
@@ -401,6 +522,141 @@ export default function NotasFiscais() {
     }
   };
 
+  async function solicitarEmissaoHomologacao(nota) {
+    if (emitindoNfse) return;
+
+    if (!nota?.id) {
+      window.alert("Salve o rascunho antes de solicitar a emissão.");
+      return;
+    }
+
+    if (nota.status !== "rascunho") {
+      window.alert(
+        "Esta nota não está em rascunho. Consulte o status antes de qualquer nova solicitação.",
+      );
+      return;
+    }
+
+    const usuario = auth.currentUser;
+
+    if (!usuario) {
+      window.alert("Sua sessão expirou. Entre novamente.");
+      return;
+    }
+
+    const cliente = clientes.find((item) => item.id === nota.clienteId);
+
+    if (!cliente) {
+      window.alert("Não foi possível localizar o cliente desta nota.");
+      return;
+    }
+
+    const valor = Number(nota.valor);
+
+    if (!Number.isFinite(valor) || valor <= 0) {
+      window.alert("O valor da nota precisa ser maior que zero.");
+      return;
+    }
+
+    if (!nota.descricao?.trim()) {
+      window.alert("Informe a descrição do serviço.");
+      return;
+    }
+
+    if (!nota.dataCompetencia) {
+      window.alert("Informe a data de competência.");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      "Solicitar emissão desta nota em HOMOLOGAÇÃO?\n\n" +
+        "Esta ação enviará uma solicitação à Notaas. " +
+        "Não clique novamente se houver demora: consulte o status primeiro.",
+    );
+
+    if (!confirmar) return;
+
+    setEmitindoNfse(true);
+
+    try {
+      const token = await usuario.getIdToken();
+
+      const payload = {
+        tomador: montarTomadorNfse(cliente),
+
+        servico: {
+          descricao: nota.descricao.trim(),
+        },
+
+        valores: {
+          total: valor,
+          issRetido: false,
+        },
+
+        // A API espera YYYY-MM, não YYYY-MM-DD.
+        competencia: String(nota.dataCompetencia).slice(0, 7),
+
+        // Identificador para conciliar a resposta com o rascunho.
+        referencia: `NFSE-${nota.id}`,
+      };
+
+      const resposta = await fetch("/.netlify/functions/nfse-emitir", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const resultado = await resposta.json().catch(() => ({}));
+
+      if (!resposta.ok) {
+        throw new Error(
+          resultado.error ||
+            resultado.message ||
+            `Não foi possível solicitar a emissão (HTTP ${resposta.status}).`,
+        );
+      }
+
+      const invoiceId = resultado.invoiceId || resultado.data?.invoiceId;
+
+      if (!invoiceId) {
+        throw new Error(
+          "A resposta não contém invoiceId. Verifique o retorno da Notaas antes de tentar novamente.",
+        );
+      }
+
+      // Registra o protocolo sem marcar a nota como emitida.
+      await updateDoc(doc(db, "notasFiscais", nota.id), {
+        status: "emissao_solicitada",
+        ambiente: "homologacao",
+        nfse: {
+          invoiceId,
+          status: resultado.status || "queued",
+          referencia: payload.referencia,
+          solicitadoEm: new Date().toISOString(),
+        },
+        atualizadoEm: serverTimestamp(),
+      });
+
+      window.alert(
+        "Solicitação registrada em homologação.\n\n" +
+          `Protocolo Notaas: ${invoiceId}\n` +
+          `Status: ${resultado.status || "queued"}\n\n` +
+          "A nota ainda não deve ser considerada emitida.",
+      );
+
+      await carregarDados();
+    } catch (erro) {
+      console.error("Erro ao solicitar NFS-e:", erro);
+
+      window.alert(erro.message || "Não foi possível solicitar a emissão.");
+    } finally {
+      setEmitindoNfse(false);
+    }
+  }
+
   const excluirRascunho = async (nota) => {
     if (nota.status !== "rascunho") {
       setMensagem({
@@ -510,6 +766,21 @@ export default function NotasFiscais() {
             }}
           >
             Novo rascunho
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={
+              emitindoNfse ||
+              !notaSelecionada ||
+              notaSelecionada.status !== "rascunho"
+            }
+            onClick={() => solicitarEmissaoHomologacao(notaSelecionada)}
+          >
+            {emitindoNfse
+              ? "Solicitando..."
+              : "Solicitar emissão em homologação"}
           </Button>
         </Stack>
 

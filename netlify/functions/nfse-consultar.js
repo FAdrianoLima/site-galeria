@@ -26,7 +26,9 @@ exports.handler = async (event) => {
     const correspondencia = authorization.match(/^Bearer (.+)$/i);
 
     if (!correspondencia) {
-      return resposta(401, { erro: "Autenticação necessária." });
+      return resposta(401, {
+        erro: "Autenticação necessária.",
+      });
     }
 
     const usuario = await admin.auth().verifyIdToken(correspondencia[1]);
@@ -84,7 +86,7 @@ exports.handler = async (event) => {
 
     const texto = await respostaNotaas.text();
 
-    let resultado;
+    let resultado = {};
 
     try {
       resultado = texto ? JSON.parse(texto) : {};
@@ -96,7 +98,6 @@ exports.handler = async (event) => {
       console.error("Erro ao consultar status na Notaas:", {
         status: respostaNotaas.status,
         invoiceId,
-        resposta: resultado,
       });
 
       return resposta(
@@ -105,7 +106,6 @@ exports.handler = async (event) => {
           : 502,
         {
           erro: "Não foi possível consultar o status da NFS-e.",
-          detalhes: resultado,
         },
       );
     }
@@ -138,7 +138,8 @@ exports.handler = async (event) => {
     if (
       erro.code === "auth/id-token-expired" ||
       erro.code === "auth/argument-error" ||
-      erro.code === "auth/invalid-id-token"
+      erro.code === "auth/invalid-id-token" ||
+      erro.code === "auth/invalid-credential"
     ) {
       return resposta(401, {
         erro: "Token Firebase inválido ou expirado.",
