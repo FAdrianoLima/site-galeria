@@ -615,12 +615,12 @@ export default function NotasFiscais() {
 
       if (!resposta.ok) {
         throw new Error(
-          resultado.error ||
+          resultado.erro ||
+            resultado.error ||
             resultado.message ||
             `Não foi possível solicitar a emissão (HTTP ${resposta.status}).`,
         );
       }
-
       const invoiceId = resultado.invoiceId || resultado.data?.invoiceId;
 
       if (!invoiceId) {
@@ -1031,103 +1031,28 @@ export default function NotasFiscais() {
                       <TableCell>Competência</TableCell>
                       <TableCell>Valor</TableCell>
                       <TableCell>Status</TableCell>
-
-                      <TableCell align="right">
-                        <Stack
-                          direction="row"
-                          justifyContent="flex-end"
-                          alignItems="center"
-                          spacing={0.5}
-                          sx={{ flexWrap: "wrap" }}
-                        >
-                          <IconButton
-                            size="small"
-                            aria-label="Visualizar rascunho"
-                            title="Visualizar dados"
-                            onClick={() => abrirDetalhes(nota)}
-                          >
-                            <VisibilityOutlinedIcon fontSize="small" />
-                          </IconButton>
-
-                          {nota.status === "rascunho" && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              disabled={
-                                emitindoNfse ||
-                                !notaSelecionada ||
-                                notaSelecionada.status !== "rascunho"
-                              }
-                              onClick={() =>
-                                solicitarEmissaoHomologacao(notaSelecionada)
-                              }
-                            >
-                              {emitindoNfse
-                                ? "Solicitando..."
-                                : "Solicitar emissão em homologação"}
-                            </Button>
-                          )}
-
-                          {nota.nfse?.invoiceId && (
-                            <Button
-                              size="small"
-                              variant="text"
-                              disabled={consultandoNfse}
-                              onClick={() => consultarStatusNfse(nota)}
-                              sx={{
-                                textTransform: "none",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {consultandoNfse
-                                ? "Consultando..."
-                                : "Consultar status"}
-                            </Button>
-                          )}
-
-                          {nota.status === "rascunho" && (
-                            <IconButton
-                              size="small"
-                              aria-label="Excluir rascunho"
-                              title="Excluir rascunho"
-                              color="error"
-                              onClick={() => excluirRascunho(nota)}
-                            >
-                              <DeleteOutlineIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Stack>
-                      </TableCell>
+                      <TableCell align="right">Ações</TableCell>
                     </TableRow>
                   </TableHead>
 
                   <TableBody>
                     {notasFiltradas.map((nota) => (
-                      <TableRow key={nota.id} hover>
+                      <TableRow key={nota.id}>
                         <TableCell>
-                          <Typography fontWeight={600} variant="body2">
-                            {nota.clienteNome || "Cliente não informado"}
+                          <Typography fontWeight={600}>
+                            {nota.clienteNome || "Cliente sem nome"}
                           </Typography>
-
-                          {nota.clienteDocumento && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {nota.clienteDocumento}
-                            </Typography>
-                          )}
+                          <Typography variant="caption" color="text.secondary">
+                            {nota.clienteDocumento || "Sem documento"}
+                          </Typography>
                         </TableCell>
 
-                        <TableCell sx={{ minWidth: 180, maxWidth: 280 }}>
+                        <TableCell>
                           <Typography
-                            variant="body2"
                             sx={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
+                              maxWidth: 260,
+                              whiteSpace: "normal",
+                              overflowWrap: "anywhere",
                             }}
                           >
                             {nota.descricao || "—"}
@@ -1138,36 +1063,30 @@ export default function NotasFiscais() {
                           {formatarData(nota.dataCompetencia)}
                         </TableCell>
 
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {formatarMoeda(nota.valor)}
-                        </TableCell>
+                        <TableCell>{formatarMoeda(nota.valor)}</TableCell>
 
                         <TableCell>
                           <Chip
                             size="small"
                             label={
-                              nota.status === "emitida"
-                                ? "Emitida"
-                                : nota.status === "cancelada"
-                                  ? "Cancelada"
-                                  : nota.status === "erro"
-                                    ? "Erro na emissão"
-                                    : nota.status === "emissao_solicitada"
-                                      ? "Em processamento"
-                                      : nota.status === "rascunho"
-                                        ? "Rascunho"
-                                        : nota.status || "Desconhecido"
+                              {
+                                rascunho: "Rascunho",
+                                emissao_solicitada: "Em processamento",
+                                emitida: "Emitida",
+                                erro: "Erro",
+                                cancelada: "Cancelada",
+                              }[nota.status] ||
+                              nota.status ||
+                              "Desconhecido"
                             }
                             color={
                               nota.status === "emitida"
                                 ? "success"
                                 : nota.status === "erro"
                                   ? "error"
-                                  : nota.status === "cancelada"
+                                  : nota.status === "rascunho"
                                     ? "default"
-                                    : nota.status === "emissao_solicitada"
-                                      ? "info"
-                                      : "warning"
+                                    : "warning"
                             }
                             variant="outlined"
                           />
@@ -1176,8 +1095,10 @@ export default function NotasFiscais() {
                         <TableCell align="right">
                           <Stack
                             direction="row"
-                            justifyContent="flex-end"
                             spacing={0.5}
+                            alignItems="center"
+                            justifyContent="flex-end"
+                            flexWrap="wrap"
                           >
                             <IconButton
                               size="small"
@@ -1187,6 +1108,40 @@ export default function NotasFiscais() {
                             >
                               <VisibilityOutlinedIcon fontSize="small" />
                             </IconButton>
+
+                            {nota.status === "rascunho" && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={emitindoNfse}
+                                onClick={() =>
+                                  solicitarEmissaoHomologacao(nota)
+                                }
+                                sx={{
+                                  textTransform: "none",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {emitindoNfse ? "Aguarde..." : "Testar emissão"}
+                              </Button>
+                            )}
+
+                            {nota.nfse?.invoiceId && (
+                              <Button
+                                size="small"
+                                variant="text"
+                                disabled={consultandoNfse}
+                                onClick={() => consultarStatusNfse(nota)}
+                                sx={{
+                                  textTransform: "none",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {consultandoNfse
+                                  ? "Consultando..."
+                                  : "Consultar status"}
+                              </Button>
+                            )}
 
                             {nota.status === "rascunho" && (
                               <IconButton
