@@ -10,6 +10,8 @@ const NOTAAS_BASE_URL = (
   process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
 ).replace(/\/+$/, "");
 
+const NOTAAS_API_KEY = process.env.NOTAAS_API_KEY;
+
 function resposta(statusCode, dados) {
   return {
     statusCode,
