@@ -200,20 +200,33 @@ exports.handler = async (event) => {
 
     // Não enviar override de desdobramento municipal.
     // A Notaas deve resolver o cTribMun automaticamente.
-    const { codigoTributacaoMunicipal, ...servicoSemDesdobro } = servico;
+    // 7. Montar o payload usando somente os dados recebidos
+    // e os valores fiscais configurados no servidor.
+
+    const servicoPayload = {
+      codigo: servico.codigo,
+      descricao: servico.descricao.trim(),
+      localPrestacao: servico.localPrestacao || "4305108",
+    };
 
     const payload = {
       tomador,
-      servico: servicoSemDesdobro,
+      servico: servicoPayload,
       valores: {
-        ...valores,
+        total: valores.total,
         aliquotaIss: Number(aliquotaConfigurada),
+        issRetido:
+          typeof valores.issRetido === "boolean" ? valores.issRetido : false,
       },
     };
 
-    if (competencia) payload.competencia = competencia;
-    if (referencia) payload.referencia = referencia;
+    if (competencia) {
+      payload.competencia = competencia;
+    }
 
+    if (referencia) {
+      payload.referencia = referencia;
+    }
     // 7. Solicitar emissão à Notaas
     const baseUrl = (
       process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
@@ -221,7 +234,7 @@ exports.handler = async (event) => {
 
     console.log("Dados fiscais enviados à Notaas:", {
       codigoNacional: payload.servico.codigo,
-      localPrestacao: payload.servico.localPrestacao || null,
+      localPrestacao: payload.servico.localPrestacao,
       competencia: payload.competencia || "padrão da Notaas",
       aliquotaIss: payload.valores.aliquotaIss,
     });
@@ -295,17 +308,6 @@ exports.handler = async (event) => {
       status: dadosResposta.status || "queued",
       referencia: dadosResposta.referencia || referencia || null,
       pollUrl: dadosResposta.pollUrl || null,
-      ambiente: config.ambiente,
-    });
-
-    // 8. Retornar o identificador para acompanhamento
-    return resposta(202, {
-      sucesso: true,
-      mensagem: "Solicitação encaminhada à Notaas.",
-      invoiceId: resultadoNotaas.invoiceId,
-      status: resultadoNotaas.status || "queued",
-      referencia: resultadoNotaas.referencia || referencia || null,
-      pollUrl: resultadoNotaas.pollUrl || null,
       ambiente: config.ambiente,
     });
   } catch (erro) {
