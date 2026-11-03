@@ -12,8 +12,6 @@ const NOTAAS_BASE_URL = (
 
 const NOTAAS_API_KEY = process.env.NOTAAS_API_KEY;
 
-const textoResposta = await respostaNotaas.text();
-
 console.log("DEBUG NFSE - CORPO DA RESPOSTA:", textoResposta);
 
 function resposta(statusCode, dados) {
@@ -243,7 +241,7 @@ exports.handler = async (event) => {
     ).replace(/\/+$/, "");
 
     console.log("DEBUG NFSE - VERIFICANDO CONFIGURAÇÃO:", {
-      url: NOTAAS_BASE_URL,
+      url: baseUrl,
       apiKeyConfigurada: Boolean(NOTAAS_API_KEY),
       apiKeyTamanho: NOTAAS_API_KEY?.length || 0,
     });
@@ -253,7 +251,7 @@ exports.handler = async (event) => {
     try {
       console.log("DEBUG NFSE - INICIANDO FETCH");
 
-      respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
+      respostaNotaas = await fetch(`${baseUrl}/emitir`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -283,10 +281,10 @@ exports.handler = async (event) => {
     let resultadoNotaas;
 
     try {
-      resultadoNotaas = textoResposta ? JSON.parse(textoResposta) : {};
+      resultadoNotaas = respostaTexto ? JSON.parse(respostaTexto) : {};
     } catch {
       resultadoNotaas = {
-        mensagem: textoResposta.slice(0, 1000),
+        mensagem: respostaTexto.slice(0, 1000),
       };
     }
 
