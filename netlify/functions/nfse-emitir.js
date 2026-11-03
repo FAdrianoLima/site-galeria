@@ -175,6 +175,12 @@ exports.handler = async (event) => {
       });
     }
 
+    if (typeof servico.codigo !== "string" || !/^\d{6}$/.test(servico.codigo)) {
+      return resposta(400, {
+        erro: "Informe um código de tributação nacional válido com 6 dígitos.",
+      });
+    }
+
     // Encaminhar somente os campos de nível superior previstos.
     // Os campos internos devem seguir o esquema confirmado da Notaas.
 
@@ -212,6 +218,13 @@ exports.handler = async (event) => {
     const baseUrl = (
       process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
     ).replace(/\/+$/, "");
+
+    console.log("Dados fiscais enviados à Notaas:", {
+      codigoNacional: payload.servico.codigo,
+      localPrestacao: payload.servico.localPrestacao || null,
+      competencia: payload.competencia || "padrão da Notaas",
+      aliquotaIss: payload.valores.aliquotaIss,
+    });
 
     const respostaNotaas = await fetch(`${baseUrl}/emitir`, {
       method: "POST",

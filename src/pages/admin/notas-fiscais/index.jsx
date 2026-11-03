@@ -52,11 +52,20 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import AccountBalanceOutlinedIcon from "@mui/icons-material/AccountBalanceOutlined";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 
+function obterDataLocal() {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+
+  return `${ano}-${mes}-${dia}`;
+}
+
 const initialForm = {
   clienteId: "",
   descricao: "",
   valor: "",
-  dataCompetencia: new Date().toISOString().slice(0, 10),
+  dataCompetencia: obterDataLocal(),
   observacoes: "",
 };
 
@@ -378,7 +387,7 @@ export default function NotasFiscais() {
   const abrirNovoRascunho = () => {
     setForm({
       ...initialForm,
-      dataCompetencia: new Date().toISOString().slice(0, 10),
+      dataCompetencia: obterDataLocal(),
     });
 
     setNotaSelecionada(null);
@@ -588,6 +597,7 @@ export default function NotasFiscais() {
         servico: {
           codigo: "060201",
           descricao: nota.descricao.trim(),
+          localPrestacao: "4305108",
         },
         valores: {
           total: valor,
