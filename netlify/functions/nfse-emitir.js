@@ -208,7 +208,6 @@ exports.handler = async (event) => {
     // e os valores fiscais configurados no servidor.
 
     const servicoPayload = {
-      codigo: "060201004",
       descricao: servico.descricao.trim(),
       localPrestacao: "4305108",
     };
