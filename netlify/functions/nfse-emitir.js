@@ -12,6 +12,10 @@ const NOTAAS_BASE_URL = (
 
 const NOTAAS_API_KEY = process.env.NOTAAS_API_KEY;
 
+const textoResposta = await respostaNotaas.text();
+
+console.log("DEBUG NFSE - CORPO DA RESPOSTA:", textoResposta);
+
 function resposta(statusCode, dados) {
   return {
     statusCode,
