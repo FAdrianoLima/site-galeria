@@ -248,7 +248,7 @@ exports.handler = async (event) => {
       JSON.stringify(payload, null, 2),
     );
 
-    console.log("DEBUG NFSE - URL:", `${NOTAAS_BASE_URL}/emitir`);
+    console.log("DEBUG NFSE - INICIANDO ENVIO À NOTAAS");
 
     const respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
       method: "POST",
@@ -259,10 +259,14 @@ exports.handler = async (event) => {
       body: JSON.stringify(payload),
     });
 
+    console.log("DEBUG NFSE - RESPOSTA RECEBIDA:", {
+      status: respostaNotaas.status,
+      ok: respostaNotaas.ok,
+    });
+
     const respostaTexto = await respostaNotaas.text();
 
-    console.log("DEBUG NFSE - STATUS NOTAAS:", respostaNotaas.status);
-    console.log("DEBUG NFSE - RESPOSTA NOTAAS:", respostaTexto);
+    console.log("DEBUG NFSE - CORPO DA RESPOSTA:", respostaTexto);
     const textoResposta = await respostaNotaas.text();
 
     let resultadoNotaas;
