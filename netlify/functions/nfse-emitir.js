@@ -192,9 +192,13 @@ exports.handler = async (event) => {
       });
     }
 
+    // Não enviar override de desdobramento municipal.
+    // A Notaas deve resolver o cTribMun automaticamente.
+    const { codigoTributacaoMunicipal, ...servicoSemDesdobro } = servico;
+
     const payload = {
       tomador,
-      servico,
+      servico: servicoSemDesdobro,
       valores: {
         ...valores,
         aliquotaIss: Number(aliquotaConfigurada),
