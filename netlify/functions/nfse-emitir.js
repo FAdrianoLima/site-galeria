@@ -239,17 +239,26 @@ exports.handler = async (event) => {
       aliquotaIss: payload.valores.aliquotaIss,
     });
 
-    const respostaNotaas = await fetch(`${baseUrl}/emitir`, {
+    console.log(
+      "DEBUG NFSE - PAYLOAD COMPLETO:",
+      JSON.stringify(payload, null, 2),
+    );
+
+    console.log("DEBUG NFSE - URL:", `${NOTAAS_BASE_URL}/emitir`);
+
+    const respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
         "Content-Type": "application/json",
-        Accept: "application/json",
+        "x-api-key": NOTAAS_API_KEY,
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(20000),
     });
 
+    const respostaTexto = await respostaNotaas.text();
+
+    console.log("DEBUG NFSE - STATUS NOTAAS:", respostaNotaas.status);
+    console.log("DEBUG NFSE - RESPOSTA NOTAAS:", respostaTexto);
     const textoResposta = await respostaNotaas.text();
 
     let resultadoNotaas;
