@@ -12,8 +12,6 @@ const NOTAAS_BASE_URL = (
 
 const NOTAAS_API_KEY = process.env.NOTAAS_API_KEY;
 
-console.log("DEBUG NFSE - CORPO DA RESPOSTA:", textoResposta);
-
 function resposta(statusCode, dados) {
   return {
     statusCode,
@@ -80,9 +78,7 @@ exports.handler = async (event) => {
       });
     }
 
-    const apiKey = process.env.NOTAAS_API_KEY;
-
-    if (!apiKey) {
+    if (!NOTAAS_API_KEY) {
       return resposta(500, {
         erro: "Chave da API Notaas não configurada no servidor.",
       });
@@ -236,12 +232,9 @@ exports.handler = async (event) => {
       payload.referencia = referencia;
     }
     // 7. Solicitar emissão à Notaas
-    const baseUrl = (
-      process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
-    ).replace(/\/+$/, "");
 
     console.log("DEBUG NFSE - VERIFICANDO CONFIGURAÇÃO:", {
-      url: baseUrl,
+      url: NOTAAS_BASE_URL,
       apiKeyConfigurada: Boolean(NOTAAS_API_KEY),
       apiKeyTamanho: NOTAAS_API_KEY?.length || 0,
     });
@@ -251,7 +244,7 @@ exports.handler = async (event) => {
     try {
       console.log("DEBUG NFSE - INICIANDO FETCH");
 
-      respostaNotaas = await fetch(`${baseUrl}/emitir`, {
+      respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
