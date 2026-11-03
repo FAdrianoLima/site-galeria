@@ -595,7 +595,7 @@ export default function NotasFiscais() {
       const payload = {
         tomador: montarTomadorNfse(cliente),
         servico: {
-          codigo: "060101",
+          codigo: "060201",
           descricao: nota.descricao.trim(),
           localPrestacao: "4305108",
         },
