@@ -6,6 +6,10 @@ const headers = {
   "Cache-Control": "no-store",
 };
 
+const NOTAAS_BASE_URL = (
+  process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
+).replace(/\/+$/, "");
+
 function resposta(statusCode, dados) {
   return {
     statusCode,
