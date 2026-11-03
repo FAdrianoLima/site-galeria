@@ -238,38 +238,43 @@ exports.handler = async (event) => {
       process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
     ).replace(/\/+$/, "");
 
-    console.log("Dados fiscais enviados à Notaas:", {
-      codigoNacional: payload.servico.codigo,
-      localPrestacao: payload.servico.localPrestacao,
-      competencia: payload.competencia || "padrão da Notaas",
-      aliquotaIss: payload.valores.aliquotaIss,
+    console.log("DEBUG NFSE - VERIFICANDO CONFIGURAÇÃO:", {
+      url: NOTAAS_BASE_URL,
+      apiKeyConfigurada: Boolean(NOTAAS_API_KEY),
+      apiKeyTamanho: NOTAAS_API_KEY?.length || 0,
     });
 
-    console.log(
-      "DEBUG NFSE - PAYLOAD COMPLETO:",
-      JSON.stringify(payload, null, 2),
-    );
+    let respostaNotaas;
 
-    console.log("DEBUG NFSE - INICIANDO ENVIO À NOTAAS");
+    try {
+      console.log("DEBUG NFSE - INICIANDO FETCH");
 
-    const respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": NOTAAS_API_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
+      respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": NOTAAS_API_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    console.log("DEBUG NFSE - RESPOSTA RECEBIDA:", {
-      status: respostaNotaas.status,
-      ok: respostaNotaas.ok,
-    });
+      console.log("DEBUG NFSE - RESPOSTA RECEBIDA:", {
+        status: respostaNotaas.status,
+        ok: respostaNotaas.ok,
+      });
+    } catch (erroFetch) {
+      console.error("DEBUG NFSE - ERRO NO FETCH:", {
+        name: erroFetch.name,
+        message: erroFetch.message,
+        cause: erroFetch.cause?.message,
+      });
+
+      throw erroFetch;
+    }
 
     const respostaTexto = await respostaNotaas.text();
 
     console.log("DEBUG NFSE - CORPO DA RESPOSTA:", respostaTexto);
-    const textoResposta = await respostaNotaas.text();
 
     let resultadoNotaas;
 
