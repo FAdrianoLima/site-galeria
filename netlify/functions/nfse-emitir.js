@@ -92,10 +92,10 @@ exports.handler = async (event) => {
       });
     }
 
-    // 5. Esta versão permite somente homologação
-    if (config.ambiente !== "homologacao") {
-      return resposta(403, {
-        erro: "Emissão de produção bloqueada nesta versão.",
+    // 5. Validar ambiente de emissão
+    if (!["homologacao", "producao"].includes(config.ambiente)) {
+      return resposta(500, {
+        erro: "Ambiente fiscal inválido.",
       });
     }
 

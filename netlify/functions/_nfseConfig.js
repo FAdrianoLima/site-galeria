@@ -1,5 +1,7 @@
 function obterConfiguracaoNfse() {
-  const ambiente = process.env.NFSE_AMBIENTE || "homologacao";
+  const ambiente = (process.env.NFSE_AMBIENTE || "homologacao")
+    .trim()
+    .toLowerCase();
 
   if (!["homologacao", "producao"].includes(ambiente)) {
     throw new Error("NFSE_AMBIENTE inválido.");
