@@ -51,6 +51,10 @@ exports.handler = async (event) => {
 
     const config = obterConfiguracaoNfse();
 
+    const ambienteValido = ["homologacao", "producao"].includes(
+      String(config.ambiente || "").toLowerCase(),
+    );
+
     const apiKey = process.env.NOTAAS_API_KEY;
     const baseUrl = (
       process.env.NOTAAS_BASE_URL || "https://platform.notaas.com.br/api/v1"
@@ -79,9 +83,11 @@ exports.handler = async (event) => {
         if (resposta.ok) {
           integracao = {
             conectada: true,
-            emissaoDisponivel: false,
-            mensagem:
-              "API Notaas acessível. A emissão ainda não foi habilitada nem validada.",
+            emissaoDisponivel:
+              ambienteValido && Boolean(config.emissaoHabilitada),
+            mensagem: config.emissaoHabilitada
+              ? "API Notaas acessível e emissão habilitada na configuração do servidor."
+              : "API Notaas acessível, mas a emissão está desabilitada.",
           };
         } else {
           integracao.mensagem =
@@ -110,6 +116,7 @@ exports.handler = async (event) => {
           emissaoHabilitada: config.emissaoHabilitada,
         },
         integracao,
+        ambienteValido,
       }),
     };
   } catch (erro) {
