@@ -1127,7 +1127,9 @@ export default function NotasFiscais() {
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {emitindoNfse ? "Aguarde..." : "Testar emissão"}
+                                {emitindoNfse
+                                  ? "Aguarde..."
+                                  : "Confirmar Envio da Nota"}
                               </Button>
                             )}
 
