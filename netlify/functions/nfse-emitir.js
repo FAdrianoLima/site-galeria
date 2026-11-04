@@ -179,9 +179,9 @@ exports.handler = async (event) => {
       });
     }
 
-    if (typeof servico.codigo !== "string" || !/^\d{6}$/.test(servico.codigo)) {
+    if (servico.codigo !== "060201") {
       return resposta(400, {
-        erro: "Informe um código de tributação nacional válido com 6 dígitos.",
+        erro: "Código de tributação nacional incompatível com o serviço cadastrado.",
       });
     }
 
@@ -202,10 +202,8 @@ exports.handler = async (event) => {
       });
     }
 
-    // Não enviar override de desdobramento municipal.
-    // A Notaas deve resolver o cTribMun automaticamente.
-    // 7. Montar o payload usando somente os dados recebidos
-    // e os valores fiscais configurados no servidor.
+    // 7. Montar o serviço com o enquadramento municipal
+    // atualizado pela Notaas para Caxias do Sul.
 
     const servicoPayload = {
       codigo: "060201",
@@ -243,7 +241,11 @@ exports.handler = async (event) => {
     let respostaNotaas;
 
     try {
-      console.log("DEBUG NFSE - INICIANDO FETCH");
+      console.log("DEBUG NFSE - PAYLOAD ENVIADO:", {
+        servico: payload.servico,
+        competencia: payload.competencia,
+        valores: payload.valores,
+      });
 
       respostaNotaas = await fetch(`${NOTAAS_BASE_URL}/emitir`, {
         method: "POST",
