@@ -24,8 +24,8 @@ function obterHeader(event, nome) {
   return chave ? event.headers[chave] : "";
 }
 
-function validarAssinatura(rawBody, assinatura, segredo) {
-  if (!rawBody || !assinatura || !segredo) {
+function validarAssinatura(rawBody, assinatura, secret) {
+  if (!rawBody || !assinatura || !secret) {
     return false;
   }
 
@@ -35,7 +35,7 @@ function validarAssinatura(rawBody, assinatura, segredo) {
     .replace(/^sha256=/i, "");
 
   const assinaturaEsperada = crypto
-    .createHmac("sha256", segredo)
+    .createHmac("sha256", secret)
     .update(rawBody, "utf8")
     .digest("hex");
 
