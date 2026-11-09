@@ -122,6 +122,16 @@ exports.handler = async (event) => {
       dados.invoice?.id,
     );
 
+    // Teste de conexão da Notaas: não representa uma nota fiscal.
+    if (evento === "webhook.test") {
+      console.log("Webhook de teste da Notaas recebido com assinatura válida.");
+
+      return resposta(200, {
+        sucesso: true,
+        mensagem: "Webhook conectado e assinatura validada.",
+      });
+    }
+
     if (!invoiceId) {
       console.error("Webhook sem invoiceId:", evento);
 
@@ -238,6 +248,7 @@ exports.handler = async (event) => {
 
         if (pdfUrl) atualizacoes["nfse.pdfUrl"] = pdfUrl;
         if (xmlUrl) atualizacoes["nfse.xmlUrl"] = xmlUrl;
+
         if (cancelXmlUrl) {
           atualizacoes["nfse.cancelXmlUrl"] = cancelXmlUrl;
         }
