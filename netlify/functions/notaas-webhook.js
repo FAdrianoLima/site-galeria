@@ -69,7 +69,7 @@ exports.handler = async (event) => {
       ? Buffer.from(event.body || "", "base64").toString("utf8")
       : event.body || "";
 
-    const assinatura = obterHeader(event.headers, "x-notaas-signature");
+    const assinatura = obterHeader(event, "x-notaas-signature");
 
     console.log("DEBUG Notaas webhook:", {
       segredoConfigurado: Boolean(segredo),
