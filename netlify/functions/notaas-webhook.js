@@ -24,8 +24,8 @@ function obterHeader(event, nome) {
   return chave ? event.headers[chave] : "";
 }
 
-function validarAssinatura(rawBody, assinatura, secret) {
-  if (!rawBody || !assinatura || !secret) {
+function validarAssinatura(rawBody, assinatura, segredo) {
+  if (!rawBody || !assinatura || !segredo) {
     return false;
   }
 
@@ -35,7 +35,7 @@ function validarAssinatura(rawBody, assinatura, secret) {
     .replace(/^sha256=/i, "");
 
   const assinaturaEsperada = crypto
-    .createHmac("sha256", secret)
+    .createHmac("sha256", segredo)
     .update(rawBody, "utf8")
     .digest("hex");
 
@@ -77,7 +77,7 @@ exports.handler = async (event) => {
 
     const assinatura = obterHeader(event.headers, "x-notaas-signature");
 
-    if (!validarAssinatura(rawBody, assinatura, secret)) {
+    if (!validarAssinatura(rawBody, assinatura, segredo)) {
       return resposta(401, {
         erro: "Assinatura do webhook inválida.",
       });
