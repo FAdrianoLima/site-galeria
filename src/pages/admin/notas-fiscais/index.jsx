@@ -779,6 +779,7 @@ export default function NotasFiscais() {
           </Button>
         </Stack>
 
+        {/*
         <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
           Os registros são armazenados como rascunhos. A solicitação de emissão
           em homologação será usada para testar a integração fiscal, sem
@@ -863,6 +864,7 @@ export default function NotasFiscais() {
             </Stack>
           </CardContent>
         </Card>
+      */}
 
         <Grid container spacing={2.5} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} lg={4}>
