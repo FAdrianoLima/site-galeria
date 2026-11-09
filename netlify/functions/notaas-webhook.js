@@ -24,23 +24,29 @@ function obterHeader(event, nome) {
   return chave ? event.headers[chave] : "";
 }
 
-function validarAssinatura(rawBody, assinatura, segredo) {
-  if (!rawBody || !assinatura || !segredo) return false;
+function validarAssinatura(rawBody, assinatura, secret) {
+  if (!rawBody || !assinatura || !secret) {
+    return false;
+  }
 
-  const assinaturaRecebida = String(assinatura).replace(/^sha256=/i, "");
+  // A Notaas envia: sha256=HASH
+  const assinaturaRecebida = String(assinatura)
+    .trim()
+    .replace(/^sha256=/i, "");
 
   const assinaturaEsperada = crypto
-    .createHmac("sha256", segredo)
+    .createHmac("sha256", secret)
     .update(rawBody, "utf8")
     .digest("hex");
 
-  const recebida = Buffer.from(assinaturaRecebida, "hex");
-  const esperada = Buffer.from(assinaturaEsperada, "hex");
+  const recebido = Buffer.from(assinaturaRecebida, "hex");
+  const esperado = Buffer.from(assinaturaEsperada, "hex");
 
-  return (
-    recebida.length === esperada.length &&
-    crypto.timingSafeEqual(recebida, esperada)
-  );
+  if (recebido.length !== esperado.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(recebido, esperado);
 }
 
 function primeiroTexto(...valores) {
@@ -69,11 +75,9 @@ exports.handler = async (event) => {
       ? Buffer.from(event.body || "", "base64").toString("utf8")
       : event.body || "";
 
-    const assinatura = obterHeader(event, "x-notaas-signature");
+    const assinatura = obterHeader(event.headers, "x-notaas-signature");
 
-    if (!validarAssinatura(rawBody, assinatura, segredo)) {
-      console.warn("Webhook Notaas recebido com assinatura inválida.");
-
+    if (!validarAssinatura(rawBody, assinatura, secret)) {
       return resposta(401, {
         erro: "Assinatura do webhook inválida.",
       });
