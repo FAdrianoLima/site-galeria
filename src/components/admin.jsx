@@ -21,6 +21,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Tooltip from "@mui/material/Tooltip";
 import LinearProgress from "@mui/material/LinearProgress";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -140,6 +141,11 @@ const menuItems = [
     label: "Notas fiscais",
     path: "/admin/notas-fiscais",
     icon: <ReceiptLongIcon />,
+  },
+  {
+    label: "Relatórios",
+    path: "/admin/relatorios",
+    icon: <AssessmentIcon />,
   },
   {
     label: "Mensagens",
