@@ -24,10 +24,19 @@ function obterHeader(event, nome) {
   return chave ? event.headers[chave] : "";
 }
 
-function validarAssinatura(rawBody, assinatura, secret) {
-  if (!rawBody || !assinatura || !secret) {
+function validarAssinatura(rawBody, assinatura, segredo) {
+  if (!rawBody || !assinatura || !segredo) {
     return false;
   }
+
+  console.log("DEBUG webhook assinatura:", {
+    segredoConfigurado: Boolean(segredo),
+    tamanhoSegredo: segredo.length,
+    assinaturaRecebida: Boolean(assinatura),
+    tamanhoAssinatura: assinatura.length,
+    inicioAssinatura: assinatura.substring(0, 7),
+    tamanhoRawBody: rawBody.length,
+  });
 
   // A Notaas envia: sha256=HASH
   const assinaturaRecebida = String(assinatura)
@@ -35,7 +44,7 @@ function validarAssinatura(rawBody, assinatura, secret) {
     .replace(/^sha256=/i, "");
 
   const assinaturaEsperada = crypto
-    .createHmac("sha256", secret)
+    .createHmac("sha256", segredo)
     .update(rawBody, "utf8")
     .digest("hex");
 
