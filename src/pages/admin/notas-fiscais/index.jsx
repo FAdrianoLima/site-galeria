@@ -1150,6 +1150,45 @@ export default function NotasFiscais() {
                               </Button>
                             )}
 
+                            {nota.nfse?.pdfUrl && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() =>
+                                  window.open(
+                                    nota.nfse.pdfUrl,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )
+                                }
+                                sx={{
+                                  textTransform: "none",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                Baixar PDF
+                              </Button>
+                            )}
+
+                            {nota.nfse?.xmlUrl && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() =>
+                                  window.open(
+                                    nota.nfse.xmlUrl,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )
+                                }
+                                sx={{
+                                  textTransform: "none",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                Baixar XML
+                              </Button>
+                            )}
                             {nota.status === "rascunho" && (
                               <IconButton
                                 size="small"
