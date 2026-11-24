@@ -22,6 +22,9 @@ import Banner from "../components/banner";
 import Whats from "../components/whats";
 import RodapeAl from "../components/rodape-al";
 
+import Link from "next/link";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+
 function formatarData(data) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data || "")) return data || "";
 
@@ -143,6 +146,26 @@ function AreaProcedimentos() {
         background: "linear-gradient(180deg, #fff8fb 0%, #ffffff 100%)",
       }}
     >
+      <Button
+        component={Link}
+        href="/admin"
+        size="small"
+        variant="outlined"
+        startIcon={<LockOutlinedIcon />}
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          textTransform: "none",
+          borderRadius: 2,
+          color: "#8d526e",
+          borderColor: "#e3c6d5",
+          backgroundColor: "rgba(255,255,255,0.8)",
+          "&:hover": { borderColor: "#8d526e", backgroundColor: "#fff" },
+        }}
+      >
+        Área administrativa
+      </Button>
       <Container maxWidth="md">
         <Box textAlign="center" mb={4}>
           <Typography
