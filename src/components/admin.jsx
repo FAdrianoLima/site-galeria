@@ -22,6 +22,7 @@ import Tooltip from "@mui/material/Tooltip";
 import LinearProgress from "@mui/material/LinearProgress";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -143,6 +144,11 @@ const menuItems = [
     icon: <ReceiptLongIcon />,
   },
   {
+    label: "Comandas",
+    path: "/admin/comandas",
+    icon: <AssignmentIcon />,
+  },
+  {
     label: "Relatórios",
     path: "/admin/relatorios",
     icon: <AssessmentIcon />,
@@ -165,6 +171,8 @@ const pageTitles = {
   "/admin/clientes": "Clientes",
   "/admin/servicos": "Serviços",
   "/admin/notas-fiscais": "Notas Fiscais",
+  "/admin/comandas": "Comandas",
+  "/admin/relatorios": "Relatórios",
   "/admin/mensagens": "Mensagens",
   "/admin/configuracoes": "Configurações",
 };

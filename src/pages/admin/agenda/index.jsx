@@ -8,6 +8,7 @@ import {
 } from "../../../services/agenda";
 import { ReadAll as ReadClientes } from "../../../services/clientes";
 import { ReadAll as ReadServicos } from "../../../services/servicos";
+import { ReadAll as ReadComandas, saldoItem } from "../../../services/comandas";
 
 import {
   Alert,
@@ -36,6 +37,8 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import EditIcon from "@mui/icons-material/Edit";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
+
+import { ConfirmarAtendimento } from "../../../services/comandas";
 
 const STATUS = [
   { value: "agendado", label: "Agendado" },
@@ -107,6 +110,8 @@ const calcularHorarioFim = (horario, duracao) => {
 };
 
 export default function Agenda() {
+  const [comandas, setComandas] = React.useState([]);
+
   const [agendamentos, setAgendamentos] = React.useState([]);
   const [clientes, setClientes] = React.useState([]);
   const [servicos, setServicos] = React.useState([]);
@@ -129,9 +134,14 @@ export default function Agenda() {
     setErro("");
 
     try {
-      const [listaAgendamentos, listaClientes, listaServicos] =
-        await Promise.all([ReadAgendamentos(), ReadClientes(), ReadServicos()]);
-
+      const [listaAgendamentos, listaClientes, listaServicos, listaComandas] =
+        await Promise.all([
+          ReadAgendamentos(),
+          ReadClientes(),
+          ReadServicos(),
+          ReadComandas(),
+        ]);
+      setComandas(listaComandas);
       setAgendamentos(listaAgendamentos);
       setClientes(listaClientes);
       setServicos(listaServicos);
@@ -186,6 +196,7 @@ export default function Agenda() {
       horario: item.horario || "09:00",
       status: item.status || "agendado",
       observacoes: item.observacoes || "",
+      vinculo: item.comandaId ? `${item.comandaId}|${item.comandaItemId}` : "",
     });
     setErro("");
     setModalAberto(true);
@@ -195,6 +206,9 @@ export default function Agenda() {
     setFormulario((atual) => ({
       ...atual,
       [campo]: valor,
+      ...(campo === "clienteId" || campo === "servicoId"
+        ? { vinculo: "" }
+        : {}),
     }));
   };
 
@@ -233,6 +247,10 @@ export default function Agenda() {
       servicoNome: servico.nome || "",
       duracao: Number(servico.duracao),
       valor: Number(servico.valor || 0),
+      comandaId: formulario.vinculo ? formulario.vinculo.split("|")[0] : null,
+      comandaItemId: formulario.vinculo
+        ? formulario.vinculo.split("|")[1]
+        : null,
     };
 
     setSalvando(true);
@@ -281,6 +299,41 @@ export default function Agenda() {
   const servicosDisponiveis = servicos.filter(
     (item) => item.ativo !== false || item.id === formulario.servicoId,
   );
+
+  const opcoesComanda = React.useMemo(() => {
+    if (!formulario.clienteId || !formulario.servicoId) return [];
+
+    const opcoes = [];
+
+    comandas
+      .filter(
+        (c) => c.clienteId === formulario.clienteId && c.status === "aberta",
+      )
+      .forEach((c) => {
+        c.itens.forEach((item) => {
+          const serve =
+            item.servicoId === formulario.servicoId ||
+            (item.servicosIncluidos || []).includes(formulario.servicoId);
+
+          const atual = formulario.vinculo === `${c.id}|${item.id}`;
+
+          if (serve && (saldoItem(c, item) > 0 || atual)) {
+            const feitas = item.sessoesTotal - saldoItem(c, item);
+            opcoes.push({
+              value: `${c.id}|${item.id}`,
+              label: `Comanda #${c.numero} · ${item.nome} (${feitas}/${item.sessoesTotal})`,
+            });
+          }
+        });
+      });
+
+    return opcoes;
+  }, [
+    comandas,
+    formulario.clienteId,
+    formulario.servicoId,
+    formulario.vinculo,
+  ]);
 
   return (
     <Admin>
@@ -420,7 +473,11 @@ export default function Agenda() {
                   onChange={(event) => setFiltroStatus(event.target.value)}
                 >
                   <MenuItem value="todos">Todos os status</MenuItem>
-                  {STATUS.map((item) => (
+                  {STATUS.filter(
+                    (item) =>
+                      item.value !== "realizado" ||
+                      formulario.status === "realizado",
+                  ).map((item) => (
                     <MenuItem key={item.value} value={item.value}>
                       {item.label}
                     </MenuItem>
@@ -581,6 +638,31 @@ export default function Agenda() {
                             Cancelar
                           </Button>
                         )}
+                      {["agendado", "confirmado"].includes(item.status) &&
+                        !item.sessaoDescontada && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={async () => {
+                              try {
+                                const r = await ConfirmarAtendimento(item);
+                                setAviso(
+                                  r.comMovimentoDeComanda
+                                    ? `Atendimento confirmado. Sessões: ${r.sessoesRealizadas}/${r.sessoesTotal}.`
+                                    : "Atendimento confirmado.",
+                                );
+                                await carregarDados();
+                              } catch (error) {
+                                setErro(
+                                  error.message ||
+                                    "Não foi possível confirmar o atendimento.",
+                                );
+                              }
+                            }}
+                          >
+                            Confirmar
+                          </Button>
+                        )}
                     </Grid>
                   </Grid>
                 </Paper>
@@ -664,6 +746,27 @@ export default function Agenda() {
                           {servico.nome} — {servico.duracao || "?"} min —{" "}
                           {formatarMoeda(servico.valor)}
                           {servico.ativo === false ? " (Inativo)" : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel id="vinculo-label">
+                      Vincular à comanda (opcional)
+                    </InputLabel>
+                    <Select
+                      labelId="vinculo-label"
+                      value={formulario.vinculo}
+                      label="Vincular à comanda (opcional)"
+                      onChange={(e) => alterarCampo("vinculo", e.target.value)}
+                    >
+                      <MenuItem value="">Sem comanda</MenuItem>
+                      {opcoesComanda.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>
+                          {o.label}
                         </MenuItem>
                       ))}
                     </Select>

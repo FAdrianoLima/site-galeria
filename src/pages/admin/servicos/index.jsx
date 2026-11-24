@@ -22,6 +22,9 @@ import {
   Switch,
   TextField,
   Typography,
+  Autocomplete,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -38,6 +41,9 @@ const FORMULARIO_INICIAL = {
   duracao: 60,
   valor: "",
   ativo: true,
+  tipo: "servico",
+  sessoes: 10,
+  servicosIncluidos: [],
 };
 
 const formatarMoeda = (valor) =>
@@ -101,6 +107,9 @@ export default function Servicos() {
       duracao: servico.duracao ?? 60,
       valor: servico.valor ?? "",
       ativo: servico.ativo !== false,
+      tipo: servico.tipo || "servico",
+      sessoes: servico.sessoes ?? 10,
+      servicosIncluidos: servico.servicosIncluidos ?? [],
     });
     setErro("");
     setModalAberto(true);
@@ -147,6 +156,7 @@ export default function Servicos() {
         ...formulario,
         duracao: Number(formulario.duracao),
         valor: Number(formulario.valor),
+        sessoes: formulario.tipo === "pacote" ? Number(formulario.sessoes) : 1,
       };
 
       if (servicoEditando) {
@@ -155,6 +165,11 @@ export default function Servicos() {
       } else {
         await Create(dados);
         setAviso("Serviço cadastrado com sucesso.");
+      }
+
+      if (formulario.tipo === "pacote" && !(Number(formulario.sessoes) >= 1)) {
+        setErro("Informe a quantidade de sessões do pacote.");
+        return;
       }
 
       setModalAberto(false);
@@ -195,6 +210,9 @@ export default function Servicos() {
         duracao: servico.duracao,
         valor: servico.valor,
         ativo: servico.ativo === false,
+        tipo: servico.tipo || "servico",
+        sessoes: servico.sessoes ?? 10,
+        servicosIncluidos: servico.servicosIncluidos ?? [],
       });
 
       setAviso(
@@ -394,12 +412,14 @@ export default function Servicos() {
                     {formatarMoeda(servico.valor)}
                   </Typography>
 
-                  <Chip
-                    size="small"
-                    label={servico.ativo === false ? "Inativo" : "Ativo"}
-                    color={servico.ativo === false ? "default" : "success"}
-                    sx={{ mt: 2 }}
-                  />
+                  {servico.tipo === "pacote" && (
+                    <Chip
+                      size="small"
+                      color="primary"
+                      label={`Pacote · ${servico.sessoes} sessões`}
+                      sx={{ ml: 0.5 }}
+                    />
+                  )}
                 </Paper>
               </Grid>
             ))}
@@ -453,6 +473,68 @@ export default function Servicos() {
               )}
 
               <Grid container spacing={2} sx={{ pt: 0.5 }}>
+                <Grid item xs={12}>
+                  <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    size="small"
+                    value={formulario.tipo}
+                    onChange={(_, valor) =>
+                      valor && alterarCampo("tipo", valor)
+                    }
+                  >
+                    <ToggleButton value="servico">Serviço avulso</ToggleButton>
+                    <ToggleButton value="pacote">
+                      Pacote de sessões
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Grid>
+                {formulario.tipo === "pacote" && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="Quantidade de sessões"
+                        type="number"
+                        value={formulario.sessoes}
+                        onChange={(e) =>
+                          alterarCampo("sessoes", e.target.value)
+                        }
+                        inputProps={{ min: 1, step: 1 }}
+                        required
+                        fullWidth
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Autocomplete
+                        multiple
+                        options={servicos.filter(
+                          (s) =>
+                            s.tipo !== "pacote" && s.id !== servicoEditando?.id,
+                        )}
+                        getOptionLabel={(s) => s.nome}
+                        isOptionEqualToValue={(a, b) => a.id === b.id}
+                        value={servicos.filter((s) =>
+                          formulario.servicosIncluidos.includes(s.id),
+                        )}
+                        onChange={(_, lista) =>
+                          alterarCampo(
+                            "servicosIncluidos",
+                            lista.map((s) => s.id),
+                          )
+                        }
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Serviços incluídos (opcional)"
+                            helperText="Se vazio, as sessões são do próprio pacote."
+                          />
+                        )}
+                      />
+                    </Grid>
+                  </>
+                )}
+
                 <Grid item xs={12}>
                   <TextField
                     label="Nome do serviço"

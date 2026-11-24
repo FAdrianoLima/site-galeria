@@ -14,15 +14,27 @@ import {
 
 const COLECAO = "servicos";
 
-const normalizarServico = (dados) => ({
-  nome: String(dados.nome || "").trim(),
-  categoria: String(dados.categoria || "").trim(),
-  descricao: String(dados.descricao || "").trim(),
-  duracao: Number(dados.duracao) || 0,
-  valor: Number(dados.valor) || 0,
-  ativo: dados.ativo !== false,
-});
+const normalizarServico = (dados) => {
+  const tipo = dados.tipo === "pacote" ? "pacote" : "servico";
 
+  return {
+    nome: String(dados.nome || "").trim(),
+    categoria: String(dados.categoria || "").trim(),
+    descricao: String(dados.descricao || "").trim(),
+    duracao: Number(dados.duracao) || 0, // duração de UMA sessão
+    valor: Number(dados.valor) || 0, // valor do pacote inteiro, se for pacote
+    ativo: dados.ativo !== false,
+    tipo,
+    sessoes:
+      tipo === "pacote"
+        ? Math.max(1, Math.floor(Number(dados.sessoes)) || 1)
+        : 1,
+    servicosIncluidos:
+      tipo === "pacote" && Array.isArray(dados.servicosIncluidos)
+        ? dados.servicosIncluidos
+        : [],
+  };
+};
 export async function ReadAll() {
   const referencia = collection(db, COLECAO);
 

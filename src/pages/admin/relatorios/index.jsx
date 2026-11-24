@@ -35,6 +35,11 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 
+import { ReadAll as ReadComandas } from "../../../services/comandas";
+import { ReadAll as ReadClientes } from "../../../services/clientes";
+import { calcularRelatorio } from "../../../services/relatorioFinanceiro";
+import GraficoPizza from "../../../components/GraficoPizza";
+
 const STATUS = [
   { value: "agendado", label: "Agendado", color: "warning" },
   { value: "confirmado", label: "Confirmado", color: "success" },
@@ -186,13 +191,23 @@ export default function Relatorios() {
   const [filtroServico, setFiltroServico] = React.useState("todos");
   const [filtroStatus, setFiltroStatus] = React.useState("todos");
 
+  const [comandas, setComandas] = React.useState([]);
+  const [clientes, setClientes] = React.useState([]);
+
   const carregarDados = React.useCallback(async () => {
     setCarregando(true);
     setErro("");
 
     try {
-      const retorno = await ReadAgendamentos();
+      const [retorno, listaComandas, listaClientes] = await Promise.all([
+        ReadAgendamentos(),
+        ReadComandas(),
+        ReadClientes(),
+      ]);
+
       setAgendamentos(Array.isArray(retorno) ? retorno : []);
+      setComandas(listaComandas || []);
+      setClientes(listaClientes || []);
     } catch (error) {
       console.error("Erro ao carregar relatórios:", error);
 
@@ -219,10 +234,16 @@ export default function Relatorios() {
       mapa.set(item.servicoId, obterNomeServico(item));
     });
 
+    comandas.forEach((comanda) => {
+      (comanda.itens || []).forEach((item) => {
+        if (item.servicoId) mapa.set(item.servicoId, item.nome);
+      });
+    });
+
     return Array.from(mapa.entries())
       .map(([id, nome]) => ({ id, nome }))
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [agendamentos]);
+  }, [agendamentos, comandas]);
 
   const dadosFiltrados = React.useMemo(() => {
     return agendamentos.filter((item) => {
@@ -292,6 +313,19 @@ export default function Relatorios() {
       quantidadeConfirmados,
     };
   }, [dadosFiltrados, realizados]);
+
+  const financeiro = React.useMemo(
+    () =>
+      calcularRelatorio({
+        comandas,
+        agendamentos,
+        clientes,
+        dataInicio,
+        dataFim,
+        filtroServico,
+      }),
+    [comandas, agendamentos, clientes, dataInicio, dataFim, filtroServico],
+  );
 
   const rankingServicos = React.useMemo(() => {
     const mapa = new Map();
@@ -601,9 +635,9 @@ export default function Relatorios() {
               <Grid container spacing={2} sx={{ mb: 4 }}>
                 <Grid item xs={12} sm={6} md={3}>
                   <Indicador
-                    titulo="Faturamento realizado"
-                    valor={formatarMoeda(indicadores.faturamento)}
-                    descricao="Somente serviços realizados"
+                    titulo="Faturamento"
+                    valor={formatarMoeda(financeiro.faturamento.total)}
+                    descricao="Pagamentos registrados no período"
                     icone={<AttachMoneyIcon />}
                     destaque
                   />
@@ -621,8 +655,8 @@ export default function Relatorios() {
                 <Grid item xs={12} sm={6} md={3}>
                   <Indicador
                     titulo="Ticket médio"
-                    valor={formatarMoeda(indicadores.ticketMedio)}
-                    descricao="Faturamento ÷ realizados"
+                    valor={formatarMoeda(financeiro.ticketMedioGeral)}
+                    descricao="Faturamento ÷ serviços realizados"
                     icone={<AttachMoneyIcon />}
                   />
                 </Grid>
@@ -680,7 +714,52 @@ export default function Relatorios() {
                   />
                 </Grid>
               </Grid>
+              <Card sx={{ mb: 4 }}>
+                <CardContent>
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                    Faturamento por tipo
+                  </Typography>
 
+                  <Grid container spacing={3} alignItems="center">
+                    <Grid item xs={12} md={5}>
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Serviços
+                          </Typography>
+                          <Typography variant="h5" fontWeight={700}>
+                            {formatarMoeda(financeiro.faturamento.servicos)}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Pacotes
+                          </Typography>
+                          <Typography variant="h5" fontWeight={700}>
+                            {formatarMoeda(financeiro.faturamento.pacotes)}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Total
+                          </Typography>
+                          <Typography
+                            variant="h5"
+                            fontWeight={700}
+                            color="primary"
+                          >
+                            {formatarMoeda(financeiro.faturamento.total)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Grid>
+
+                    <Grid item xs={12} md={7}>
+                      <GraficoPizza dados={financeiro.porTipo} />
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={12} md={7}>
                   <Card sx={{ height: "100%" }}>
@@ -891,7 +970,7 @@ export default function Relatorios() {
                     Clientes mais atendidos
                   </Typography>
 
-                  {rankingClientes.length === 0 ? (
+                  {financeiro.clientes.length === 0 ? (
                     <Typography color="text.secondary" variant="body2">
                       Não há clientes atendidos neste período.
                     </Typography>
@@ -901,34 +980,40 @@ export default function Relatorios() {
                         <TableHead>
                           <TableRow>
                             <TableCell>Cliente</TableCell>
-                            <TableCell align="right">Atendimentos</TableCell>
                             <TableCell align="right">
-                              Faturamento gerado
+                              Serviços realizados
+                            </TableCell>
+                            <TableCell align="right">Ticket médio</TableCell>
+                            <TableCell align="right">
+                              Total movimentado
                             </TableCell>
                           </TableRow>
                         </TableHead>
 
                         <TableBody>
-                          {rankingClientes.map((item) => (
+                          {financeiro.clientes.map((item) => (
                             <TableRow key={item.id}>
                               <TableCell>
-                                <Stack spacing={0.7}>
-                                  <Typography variant="body2" fontWeight={600}>
-                                    {item.nome}
+                                <Typography variant="body2" fontWeight={600}>
+                                  {item.nome}
+                                </Typography>
+                                {item.idade !== null && (
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {item.idade} anos
                                   </Typography>
-                                  <BarraIndicador
-                                    valor={item.quantidade}
-                                    maximo={maiorQuantidadeCliente}
-                                  />
-                                </Stack>
+                                )}
                               </TableCell>
-
                               <TableCell align="right">
-                                {formatarNumero(item.quantidade)}
+                                {formatarNumero(item.servicos)}
                               </TableCell>
-
                               <TableCell align="right">
-                                {formatarMoeda(item.faturamento)}
+                                {formatarMoeda(item.ticketMedio)}
+                              </TableCell>
+                              <TableCell align="right">
+                                {formatarMoeda(item.movimentado)}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -938,7 +1023,49 @@ export default function Relatorios() {
                   )}
                 </CardContent>
               </Card>
+              <Card sx={{ mb: 4 }}>
+                <CardContent>
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                    Perfil por faixa etária
+                  </Typography>
 
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Faixa etária</TableCell>
+                          <TableCell align="right">Clientes</TableCell>
+                          <TableCell align="right">
+                            Serviços realizados
+                          </TableCell>
+                          <TableCell align="right">Ticket médio</TableCell>
+                          <TableCell align="right">Total movimentado</TableCell>
+                        </TableRow>
+                      </TableHead>
+
+                      <TableBody>
+                        {financeiro.faixas.map((faixa) => (
+                          <TableRow key={faixa.id}>
+                            <TableCell>{faixa.label}</TableCell>
+                            <TableCell align="right">
+                              {formatarNumero(faixa.clientes)}
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatarNumero(faixa.servicos)}
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatarMoeda(faixa.ticketMedio)}
+                            </TableCell>
+                            <TableCell align="right">
+                              {formatarMoeda(faixa.movimentado)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </CardContent>
+              </Card>
               <Card className="relatorios-tabela-final">
                 <CardContent>
                   <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
@@ -1006,10 +1133,11 @@ export default function Relatorios() {
                 display="block"
                 sx={{ mt: 3 }}
               >
-                Relatório gerado em {new Date().toLocaleString("pt-BR")}.
-                Faturamento calculado com base nos agendamentos com status
-                &quot;Realizado&quot;. Os valores representam o valor registrado
-                no agendamento, não uma confirmação de recebimento.
+                Relatório gerado em {new Date().toLocaleString("pt-BR")}. O
+                faturamento considera os pagamentos registrados nas comandas no
+                período, divididos entre serviços e pacotes, mais os
+                atendimentos antigos realizados sem comanda. O pagamento em si é
+                feito fora do sistema; aqui consta apenas o que foi registrado.
               </Typography>
             </>
           )}

@@ -22,6 +22,10 @@ import styles from "../../../styles/admin/Grupo.Usuarios.module.css";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
+import Autocomplete from "@mui/material/Autocomplete";
+import { ReadAll as ReadClientes } from "../../../services/clientes";
+import { calcularIdade } from "../../../services/idade";
+
 import {
   Read,
   Create,
@@ -200,6 +204,15 @@ const Content = () => {
 
   const [observacoes, setObservacoes] = React.useState("");
 
+  const [indicacao, setIndicacao] = React.useState("");
+  const [indicadoPorId, setIndicadoPorId] = React.useState("");
+  const [todosClientes, setTodosClientes] = React.useState([]);
+
+  React.useEffect(() => {
+    ReadClientes()
+      .then((l) => setTodosClientes(l || []))
+      .catch(() => {});
+  }, []);
   // ==========================================================
   // CARREGAR CLIENTE
   // ==========================================================
@@ -232,6 +245,8 @@ const Content = () => {
       setCidade(retornoCliente.cidade || "");
       setEstado(retornoCliente.estado || "RS");
       setCep(retornoCliente.cep || "");
+      setIndicacao(retornoCliente.indicacao || "");
+      setIndicadoPorId(retornoCliente.indicadoPorId || "");
 
       // Novos dados
       setDataNascimento(retornoCliente.dataNascimento || "");
@@ -254,6 +269,30 @@ const Content = () => {
       setBackDrop(false);
     }
   };
+
+  const opcoesIndicacao = React.useMemo(() => {
+    const clientesOpcoes = todosClientes
+      .filter((c) => c.id !== id && c.nome)
+      .map((c) => ({
+        label: c.nome,
+        clienteId: c.id,
+        grupo: "Clientes cadastrados",
+      }));
+
+    const textos = [
+      ...new Set(
+        todosClientes
+          .filter((c) => c.indicacao && !c.indicadoPorId)
+          .map((c) => c.indicacao.trim()),
+      ),
+    ].map((t) => ({
+      label: t,
+      clienteId: "",
+      grupo: "Já utilizados em outros cadastros",
+    }));
+
+    return [...clientesOpcoes, ...textos];
+  }, [todosClientes, id]);
 
   // ==========================================================
   // CARREGAR PELO ID DA URL
@@ -404,6 +443,9 @@ const Content = () => {
         cep: somenteNumeros(cep),
 
         observacoes: observacoes.trim(),
+
+        indicacao: indicacao.trim(),
+        indicadoPorId: indicadoPorId || "",
 
         ativo: true,
       };
@@ -614,6 +656,37 @@ const Content = () => {
               InputLabelProps={{
                 shrink: true,
               }}
+              helperText={
+                calcularIdade(dataNascimento) !== null
+                  ? `${calcularIdade(dataNascimento)} anos`
+                  : ""
+              }
+            />
+            <Autocomplete
+              freeSolo
+              fullWidth
+              options={opcoesIndicacao}
+              groupBy={(o) => o.grupo}
+              getOptionLabel={(o) => (typeof o === "string" ? o : o.label)}
+              inputValue={indicacao}
+              onInputChange={(_, valor, motivo) => {
+                setIndicacao(valor);
+                if (motivo !== "reset") setIndicadoPorId("");
+              }}
+              onChange={(_, opcao) => {
+                if (opcao && typeof opcao === "object") {
+                  setIndicacao(opcao.label);
+                  setIndicadoPorId(opcao.clienteId || "");
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Indicação"
+                  helperText="Busque um cliente cadastrado, escolha uma indicação já usada ou digite uma nova."
+                />
+              )}
+              sx={{ mb: 4 }}
             />
           </Stack>
 

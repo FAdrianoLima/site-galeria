@@ -22,6 +22,16 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
+import { ConfirmarAtendimento } from "../../services/comandas";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Snackbar,
+} from "@mui/material";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+
 const normalizar = (valor) =>
   String(valor || "")
     .trim()
@@ -164,6 +174,10 @@ export default function Dashboard() {
   const [erro, setErro] = React.useState("");
   const [ultimaAtualizacao, setUltimaAtualizacao] = React.useState(null);
 
+  const [atendimentoConfirmar, setAtendimentoConfirmar] = React.useState(null);
+  const [confirmando, setConfirmando] = React.useState(false);
+  const [aviso, setAviso] = React.useState("");
+
   const [dados, setDados] = React.useState({
     clientes: 0,
     atendimentosHoje: 0,
@@ -180,13 +194,23 @@ export default function Dashboard() {
     setErro("");
 
     try {
-      const [clientesSnap, agendamentosSnap, servicosSnap, mensagensSnap] =
-        await Promise.all([
-          getDocs(collection(db, "clientes")),
-          getDocs(collection(db, "agendamentos")),
-          getDocs(collection(db, "servicos")),
-          getDocs(collection(db, "mensagens")),
-        ]);
+      const [
+        clientesSnap,
+        agendamentosSnap,
+        servicosSnap,
+        mensagensSnap,
+        comandasSnap,
+      ] = await Promise.all([
+        getDocs(collection(db, "clientes")),
+        getDocs(collection(db, "agendamentos")),
+        getDocs(collection(db, "servicos")),
+        getDocs(collection(db, "mensagens")),
+        getDocs(collection(db, "comandas")),
+      ]);
+
+      const mapaComandas = new Map(
+        comandasSnap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]),
+      );
 
       const hoje = dataLocalISO();
 
@@ -225,8 +249,16 @@ export default function Dashboard() {
         );
 
       const agendaFormatada = agendaHoje.map((item) => {
-        const cliente = mapaClientes.get(item.clienteId);
-        const servico = mapaServicos.get(item.servicoId);
+        const comanda = item.comandaId
+          ? mapaComandas.get(item.comandaId)
+          : null;
+        const itemComanda = comanda?.itens?.find(
+          (i) => i.id === item.comandaItemId,
+        );
+        const feitas = itemComanda
+          ? (comanda.baixas || []).filter((b) => b.itemId === itemComanda.id)
+              .length
+          : 0;
 
         return {
           id: item.id,
@@ -239,6 +271,13 @@ export default function Dashboard() {
             servico?.nome || servico?.titulo || "Serviço não identificado",
           status: formatarStatus(item.status),
           statusOriginal: item.status,
+          comandaTexto: itemComanda
+            ? `Comanda #${comanda.numero} · ${feitas}/${itemComanda.sessoesTotal} sessões`
+            : "",
+          podeConfirmar:
+            ["agendado", "confirmado"].includes(normalizar(item.status)) &&
+            !item.sessaoDescontada,
+          agendamento: item, // necessário para ConfirmarAtendimento
         };
       });
 
@@ -293,6 +332,32 @@ export default function Dashboard() {
   React.useEffect(() => {
     carregarDados();
   }, [carregarDados]);
+
+  const confirmarAtendimento = async () => {
+    if (!atendimentoConfirmar) return;
+
+    setConfirmando(true);
+
+    try {
+      const r = await ConfirmarAtendimento(atendimentoConfirmar.agendamento);
+
+      setAviso(
+        r.comMovimentoDeComanda
+          ? `Atendimento confirmado. Sessões: ${r.sessoesRealizadas}/${r.sessoesTotal}.` +
+              (r.notaCriada ? " Rascunho de nota criado." : "")
+          : "Atendimento confirmado (sem comanda vinculada).",
+      );
+
+      setAtendimentoConfirmar(null);
+      await carregarDados();
+    } catch (error) {
+      console.error("Erro ao confirmar atendimento:", error);
+      setAviso(error.message || "Não foi possível confirmar o atendimento.");
+      setAtendimentoConfirmar(null);
+    } finally {
+      setConfirmando(false);
+    }
+  };
 
   return (
     <Admin>
@@ -477,6 +542,17 @@ export default function Dashboard() {
                       }
                       variant="outlined"
                     />
+                    {item.podeConfirmar && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<CheckCircleOutlineIcon />}
+                        onClick={() => setAtendimentoConfirmar(item)}
+                        sx={{ flexShrink: 0, textTransform: "none" }}
+                      >
+                        Confirmar atendimento
+                      </Button>
+                    )}
                   </Box>
                 ))}
             </Paper>
@@ -535,6 +611,52 @@ export default function Dashboard() {
             </Paper>
           </Grid>
         </Grid>
+
+        <Dialog
+          open={Boolean(atendimentoConfirmar)}
+          onClose={() => !confirmando && setAtendimentoConfirmar(null)}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>Confirmar atendimento realizado?</DialogTitle>
+          <DialogContent>
+            <Typography>
+              <strong>{atendimentoConfirmar?.cliente}</strong> —{" "}
+              {atendimentoConfirmar?.servico}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {atendimentoConfirmar?.comandaTexto
+                ? "Será descontada 1 sessão da comanda e criado um rascunho de nota fiscal."
+                : "Este agendamento não tem comanda vinculada. Ele será apenas marcado como realizado."}
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button
+              onClick={() => setAtendimentoConfirmar(null)}
+              disabled={confirmando}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={confirmarAtendimento}
+              disabled={confirmando}
+            >
+              {confirmando ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Confirmar"
+              )}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Snackbar
+          open={Boolean(aviso)}
+          autoHideDuration={5000}
+          onClose={() => setAviso("")}
+          message={aviso}
+        />
       </Box>
     </Admin>
   );

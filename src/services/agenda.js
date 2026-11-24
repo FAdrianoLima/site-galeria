@@ -105,6 +105,8 @@ const normalizarDados = (dados) => {
     valor: Number(dados.valor) || 0,
     status,
     observacoes: String(dados.observacoes || "").trim(),
+    comandaId: dados.comandaId || null,
+    comandaItemId: dados.comandaItemId || null,
   };
 };
 
@@ -161,6 +163,14 @@ export async function Update(id, dados) {
   if (!id) throw new Error("ID do agendamento não informado.");
 
   const agendamento = normalizarDados(dados);
+
+  const atual = snapshot.docs.find((item) => item.id === id)?.data();
+
+  if (agendamento.status === "realizado" && atual?.status !== "realizado") {
+    throw new Error(
+      "Para marcar como realizado, use o botão “Confirmar atendimento”.",
+    );
+  }
 
   const snapshot = await getDocs(collection(db, COLECAO));
   const existentes = snapshot.docs

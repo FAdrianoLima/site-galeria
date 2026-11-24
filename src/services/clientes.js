@@ -26,8 +26,9 @@ export const ReadAll = () =>
         const { docs } = data;
         retorno = docs
           .map((doc) => ({ ...doc.data(), id: doc.id }))
-          .sort((a, b) => a.nome > b.nome);
-
+          .sort((a, b) =>
+            String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"),
+          );
         localStorageClient.setData("clientes", retorno);
       }
       resolve(retorno);
@@ -125,6 +126,7 @@ const AtualizaCache = (cliente = {}, id = "", excluir = false) =>
 
       const listaDeClientes = localStorageClient.getData("clientes") || [];
       const index = listaDeClientes.findIndex((a) => a.id === id);
+      listaDeClientes[index] = { ...listaDeClientes[index], ...cliente, id };
 
       if (excluir && index >= 0) {
         listaDeClientes.splice(index, 1);
